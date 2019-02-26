@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <feature url="features/com.continental.knime.feature_0.8.0.vqualifier.jar" id="com.continental.knime.feature" version="0.8.0.vqualifier">
+      <category name="Continental Nodes for KNIME"/>
+   </feature>
+   <category-def name="Continental Nodes for KNIME" label="Continental Nodes for KNIME"/>
+</site>

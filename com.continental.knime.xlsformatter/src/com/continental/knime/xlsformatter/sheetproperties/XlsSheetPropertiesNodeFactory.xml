@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./sheetproperties.png" type="Manipulator" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+    <name>XLS Sheet Properties</name>
+    
+   	<shortDescription>
+       The XLS Sheet Properties node changes sheet properties, such as freeze, auto-filter, hidden columns, or hidden rows.
+   	</shortDescription>
+    
+    <fullDescription>
+        <intro>
+	       	The XLS Sheet Properties node changes sheet properties, such as freeze, auto-filter, hidden columns, or hidden rows.<p />
+       		
+       		This node defines a formatting instruction only which needs to be written to an xlsx file via the <i>XLS Formatter (apply)</i> node subsequently.
+    	</intro>
+    	    
+        <tab name="Tag Selection">
+            <option name="applies to tag (single tag only)">Tag in your input table for which the formatting of this node should be applied to. </option>
+  		</tab>
+        
+        <tab name="Sheet Properties">
+			<option name="freeze sheet at tagged cell">Freeze your sheet at a specific cell (more precisely: at its top-left corner) identified via a tag in the control table. Note that the tag may occur more than once in the control table. In this case, the top-left-most occurrence is used.</option>
+			<option name="set auto-filter for tagged cell range">Set an auto-filter for a range based on a single rectangular range of a matching tag in the control table.</option>
+			<option name="hide columns of tagged cells">Hide the columns from your sheet based on a matching tag in any of the columns' cells.</option>
+			<option name="hide rows of tagged cells">Hide the rows from your sheet based on a matching tag in any of the rows' cells.</option>
+        </tab>      
+
+    </fullDescription>
+    
+    <ports>
+        <inPort index="0" name="Control Table">XLS Control Table holding tags that define which cells of the sheet to format.</inPort>
+		<inPort index="1" name="Optional XLS Formatter">The XLS Formatter input port potentially holding previous formatting instructions that the instructions of this node shall be added to.</inPort>
+		<outPort index="0" name="XLS Formatter">The XLS Formatter output port holding the collected formatting instructions including the added formatting information from this node.</outPort>
+    </ports>    
+
+</knimeNode>

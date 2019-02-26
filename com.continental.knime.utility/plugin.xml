@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.0"?>
+<plugin>
+   
+   <extension
+         point="org.knime.workbench.repository.nodes">
+      <node
+            category-path="/community/continental.nodes.for.knime/utility/"
+            factory-class="com.continental.knime.utility.networkcomponentsplitter.NetworkComponentSplitterNodeFactory"
+            id="com.continental.knime.networkcomponentsplitter.NetworkComponentSplitterNodeFactory"/>
+   </extension>
+   <extension
+         id="contiCategories"
+         name="Conti Categories"
+         point="org.knime.workbench.repository.categories">
+      <category
+            icon="icons/continental.png"
+            level-id="continental.nodes.for.knime"
+            name="Continental"
+            path="/community">
+      </category>
+      <category
+            icon="icons/utility.png"
+            level-id="utility"
+            name="Utility"
+            path="/community/continental.nodes.for.knime/">
+      </category>
+   </extension>
+   <extension
+         point="org.knime.product.splashExtension">
+      <splashExtension
+            icon="icons/conti48.png"
+            icon24="icons/conti24.png"
+            icon32="icons/conti32.png"
+            id="com.continental.knime.splashExtension"
+            tooltip="Continental Nodes for KNIME">
+      </splashExtension>
+   </extension>
+   
+</plugin>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./conditionalformatter.png" type="Manipulator" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+    <name>XLS Conditional Formatter</name>
+    
+    <shortDescription>
+       The XLS Conditional Formatter node defines the instruction for your spreadsheet application to color cell backgrounds according to their numeric value. 
+   	</shortDescription>
+    
+    <fullDescription>
+        <intro>
+	       The XLS Conditional Formatter node defines instruction for your spreadsheet application to color cell backgrounds according to their numeric value.<p />
+	       This node defines a formatting instruction only which needs to be written to an xlsx file via the <i>XLS Formatter (apply)</i> node subsequently.
+    	</intro>
+            
+        <tab name="Tag Selection">
+            <option name="applies to tag (single tag only)">Tag in your input table for which the formatting of this node should be applied to. </option>
+  		</tab>
+        
+        <tab name="Conditional Formatting Settings">
+            <option name="Mid scale point needed?">Set this option if you want to create a three level coloring scheme. </option>
+            <option name="min">Set the lower bound for the coloring in the conditional formatter. The corresponding color will be displayed for all values smaller or equal than this threshold.</option>
+            <option name="min color">Select the color using the color pane.</option>
+            <option name="mid">Set the middle scaling point for the coloring in the conditional formatter.</option>
+            <option name="mid color">Select the color using the color pane.</option>
+            <option name="max">Set the upper bound for the coloring in the conditional formatter. The corresponding color will be displayed for all values greater or equal than this threshold.</option>
+            <option name="max color">Select the color using the color pane.</option>
+        </tab>        
+
+    </fullDescription>
+    
+    <ports>
+		<inPort index="0" name="Control Table">XLS Control Table holding tags that define which cells of the sheet to format.</inPort>
+		<inPort index="1" name="Optional XLS Formatter">The XLS Formatter input port potentially holding previous formatting instructions that the instructions of this node shall be added to.</inPort>
+		<outPort index="0" name="XLS Formatter">The XLS Formatter output port holding the collected formatting instructions including the added formatting information from this node.</outPort>
+    </ports>    
+
+</knimeNode>

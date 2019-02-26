@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./backgroundcolorizer.png" type="Manipulator" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+    <name>XLS Background Colorizer</name>
+    
+   	<shortDescription>
+       The XLS Background Colorizer node changes the background color and/or pattern fill for selected cells. The color information is statically defined. Consider using the XLS Conditional Formatter node if you want your spreadsheet application to color the cell background according to its numeric value. 
+   	</shortDescription>
+    
+    <fullDescription>
+        <intro>
+	       The XLS Background Colorizer node changes the background color and/or pattern fill for selected cells. The color information is statically defined. Consider using the XLS Conditional Formatter node if you want your spreadsheet application to color the cell background according to its numeric value.<p />
+	       This node's standard mode of operation is to receive the selection of cells to modify via tags in the provided XLS Control Table and the formatting instructions via the node dialog. However, it also provides a direct mode in which the XLS Control Table does not hold tags, but the desired color values directly (in RGB format, e.g. red either as #FF000 or 255/0/0) or missing values for cells not intended to be colorized. Note that the xlsx file format allows a maximum of 64,000 distinct styles per workbook only. Hence, even using a small fraction of the 16.8 million possible RGB colors can easily exhaust this quota.<p />
+	       This node defines a formatting instruction only which needs to be written to an xlsx file via the <i>XLS Formatter (apply)</i> node subsequently.
+    	</intro>
+    	
+    	<tab name="Control Table Style">
+            <option name="standard tags">Tag in your input table for which the formatting of this node should be applied to.</option>
+        	<option name="direct color codes in RGB format">Don't search for tags in the input table, but (in case of non-missing value cells) for direct RGB color codes.</option>
+		</tab>
+            
+        <tab name="Tag Selection">
+            <option name="applies to tag (single tag only)">Tag in your input table for which the formatting of this node should be applied to. </option>
+  		</tab>
+        
+        <tab name="Background Color">
+            <option name="Change color?">If you want to change the color you can enable it here. </option>
+            <option name="color">Select the color using the color pane.</option>
+        </tab>
+        
+        <tab name="Pattern Fill">
+            <option name="pattern fill">You can change the pattern fill for your selected tag here or leave it as is (e.g. unmodified, horizontal, diagonal, ...). </option>
+            <option name="Change color?">If you want to change the color you can enable it here. </option>
+            <option name="color">Select the color using the color pane.</option>
+        </tab>        
+
+    </fullDescription>
+    
+    <ports>
+        <inPort index="0" name="Control Table">XLS Control Table holding tags that define which cells of the sheet to format.
+		</inPort>
+		<inPort index="1" name="Optional XLS Formatter">The XLS Formatter input port potentially holding previous formatting instructions that the instructions of this node shall be added to.
+		</inPort>
+		<outPort index="0" name="XLS Formatter">The XLS Formatter output port holding the collected formatting instructions including the added formatting information from this node.
+		</outPort>
+    </ports>
+  
+
+</knimeNode>

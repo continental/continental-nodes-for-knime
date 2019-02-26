@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./controltablemerger.png" type="Manipulator" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+    <name>XLS Control Table Merger</name>
+    
+    <shortDescription>
+       The XLS Control Table Merger merges two control tables together. You can either overwrite or append to the information from the first control table. 
+   	</shortDescription>
+    
+    <fullDescription>
+        <intro>
+			The XLS Control Table Merger merges two control tables together. You can either overwrite or append to the information from the first control table.
+    	</intro>
+    	
+        <option name="how to combine second with first table">Either overwrite or append to the information from the first control table with the information from the second control table.</option>
+        
+    </fullDescription>
+    
+    <ports>
+        <inPort index="0" name="Control Table">XLS Control Table (holding tags used to select cells to be formatted by many XLS Formatting nodes).</inPort>
+        <inPort index="1" name="Control Table">XLS Control Table (holding tags used to select cells to be formatted by many XLS Formatting nodes).</inPort>
+        <outPort index="0" name="Control Table">XLS Control Table (holding tags used to select cells to be formatted by many XLS Formatting nodes).</outPort>
+    </ports>
+    
+</knimeNode>

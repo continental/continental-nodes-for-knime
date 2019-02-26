@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./cellmerger.png" type="Manipulator" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+    <name>XLS Cell Merger</name>
+    
+   	<shortDescription>
+	       The XLS Cell Merger node merges the cells for given ranges of input tags. 
+   	</shortDescription>
+    
+    <fullDescription>
+        <intro>
+	       The XLS Cell Merger node merges the cells for given ranges of input tags.<p />
+	       Tags in the provided XLS Control Table must appear in rectangular ranges. A single tag may re-appear, as long as two ranges of the same tag share at most a cell's corner, but not a cell's border. In this case, multiple ranges will be added based on the same tag.<p />
+	       Optionally, all distinct tags can be used instead of a single one (see below).   
+    	</intro>
+    	
+        <tab name="Tag Selection">
+            <option name="applies to tag (single tag only)">Tag in your XLS Control Table that defines the merge range(s).</option>
+        	<option name="applies to all tags">Instead of specifying a single tag, the Cell Merger is applied repetitively to all distinct tags found in the control table. Note that in this case, no comma-separated tag list splitting is applied but the full cell content qualifies as a tag.<p />
+				This option	eases definition of adjacent merge ranges based on the original data table's values.</option>
+		</tab>       
+
+    </fullDescription>
+    
+    <ports>
+        <inPort index="0" name="Control Table">XLS Control Table holding tags that define which parts of the sheet shall be merged.</inPort>
+        <inPort index="1" name="Optional XLS Formatter">The XLS Formatter input port potentially holding previous formatting instructions that the instructions of this node shall be added to.</inPort>
+        <outPort index="0" name="XLS Formatter">The XLS Formatter output port holding the collected formatting instructions including the added formatting information from this node.</outPort>
+    </ports>
+     
+
+</knimeNode>

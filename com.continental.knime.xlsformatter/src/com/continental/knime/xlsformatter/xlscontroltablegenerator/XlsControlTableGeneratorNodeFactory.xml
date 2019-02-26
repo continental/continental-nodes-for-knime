@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./xlstablegenerator.png" type="Manipulator" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+    <name>XLS Control Table Generator</name>
+    
+    <shortDescription>
+       The XLS Control Table Generator node takes an input data table and transforms it to an XLS Control Table, meaning it exchanges the column names to A, B, C, ... and the row IDs to 1, 2, 3, ... just like they would appear when opening the xlsx file in a spreadsheet application.
+       Optionally you can unpivot the table as well to make use of Rule Engine nodes later for flexible and dynamic XLS formatting workflows. 
+   	</shortDescription>
+    
+    <fullDescription>
+        <intro>
+			The XLS Control Table Generator node takes an input data table and transforms it to an XLS Control Table, meaning it exchanges the column names to A, B, C, ... and the row IDs to 1, 2, 3, ... just like they would appear when opening the xlsx file in a spreadsheet application.<p />
+       Optionally you can unpivot the table as well to make use of Rule Engine nodes later for flexible and dynamic XLS formatting workflows.
+    	</intro>
+    	
+		<tab name="Shift Rows Option">
+            <option name="use first row as column header">Copy the original table's column header to a new first row. This is typically used in line with the corresponding setting in KNIME's Excel Writer node.</option>
+  		</tab>
+        
+        <tab name="Result Table Structure Options">
+            <option name="unpivot result table (for easier post-processing and re-pivoting)">Unpivot your input table, meaning that each input table cell will become an own output table row. On this basis, own rules can be defined, e.g. to define tags required for many of the XLS Formatting nodes.</option>
+            <option name="add more header columns">Add column headers like the column number, original column names, original row ID, and padded XLS column name. Padding is useful as wide tables will otherwise be difficult to correctly sort, as e.g. Pivoting node's lexicographical sorting option would yield AA, Y, Z order instead of Y, Z, AA (solved via 00Y, 00Z, 0AA).</option>
+        </tab>        
+
+    </fullDescription>
+    
+    <ports>
+        <inPort index="0" name="Data Table">Data table, typically holding the raw data of your xlsx sheet.</inPort>
+        <outPort index="0" name="Control Table">The generated XLS Control Table (or its unpivoted version).</outPort>
+    </ports>
+    
+</knimeNode>

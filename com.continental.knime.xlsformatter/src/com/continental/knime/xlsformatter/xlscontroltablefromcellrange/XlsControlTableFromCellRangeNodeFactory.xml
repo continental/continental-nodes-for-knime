@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./xlscontroltablefromcellrange.png" type="Manipulator" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+    <name>XLS Control Table from Cell Range</name>
+    
+    <shortDescription>
+       The XLS Control Table from Cell Range node creates a control table based on a cell range and a tag you can specify in the node dialog.
+       Optionally you can input another control table whose's cells will be either overwritten or appended to by the new tag.
+   	</shortDescription>
+    
+    <fullDescription>
+        <intro>
+       		The XLS Control Table from Cell Range node creates a control table based on a cell range and a tag you can specify in the node dialog.<p />
+       		Optionally you can input another control table whose cells will be either overwritten or appended to by the new tag.
+    	</intro>
+    	
+        <option name="cell range">Cell range in XLS format (e.g. A2 or A2:B10) for which the tag should be created. Also supports the numeric column addressing format of R1C1 or R1C1:R2C2 where 'R' is the row number and 'C' the column number.</option>
+        <option name="tag to set in control table">Tag that shall be set for the cells of your range specified before.</option>
+        <option name="optional table mode">If the optional control table input is used, you can either overwrite or append the tag for overlapping cells.</option>
+
+    </fullDescription>
+    
+    <ports>
+        <inPort index="0" name="Optional Control Table">Previous XLS Control Table that shall be enriched by further tags.</inPort>
+        <outPort index="0" name="Control Table">Enriched XLS Control Table.</outPort>
+    </ports>    
+
+</knimeNode>

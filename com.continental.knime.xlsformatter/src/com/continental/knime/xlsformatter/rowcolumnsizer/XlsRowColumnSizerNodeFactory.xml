@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./sizer.png" type="Manipulator" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+    <name>XLS Row and Column Sizer</name>
+    
+   	<shortDescription>
+       The XLS Row and Column Sizer node changes the row height or column width for a selected rows or columns.
+   	</shortDescription>
+    
+    <fullDescription>
+        <intro>
+	       The XLS Row and Column Sizer node changes the row height or column width for a selected rows or columns.<p />
+	       
+	       This node's standard mode of operation is to receive the selection of columns or rows to modify via tags in the provided XLS Control Table and the size instructions via the node dialog. Matching tags can appear anywhere on the sheet, so e.g. a matching tag in cell B2 would be able to address column B or row 2.<p />
+	       This node alternatively provides a direct mode in which the XLS Control Table does not hold tags, but the desired size values directly (or missing values for rows/columns not intended to be sized). In this case, the incoming table must have all Double-typed columns but otherwise be in line with a XLS Control Table in terms of row and column names. In direct mode, row sizes are only allowed in column A and column widths in row 1.<p />
+	       
+	       This node defines a formatting instruction only which needs to be written to an xlsx file via the <i>XLS Formatter (apply)</i> node subsequently.
+    	</intro>
+    	
+    	<tab name="Control Table Style">
+            <option name="standard tags">Tag in your input table for which the formatting of this node should be applied to.</option>
+        	<option name="size from control table">Don't search for tags in the input table, but use the provided non-missing size values directly.</option>
+		</tab>
+		
+		<tab name="Row and Column Size">
+            <option name="change">Selection of whether to change row heights or column widths.</option>
+  		</tab>
+            
+        <tab name="Tag Selection">
+            <option name="applies to tag (single tag only)">Tag in your input table for which the formatting of this node should be applied to. </option>
+            <option name="size">Select the row height or the column width. Standard height is ~14 and standard width is ~8. </option>
+            <option name="auto-size">Auto-size the column width depending on its cells' contents and formatting.</option>
+  		</tab>     
+
+    </fullDescription>
+    
+    <ports>
+        <inPort index="0" name="Control Table">XLS Control Table holding tags that define which cells of the sheet to format.</inPort>
+		<inPort index="1" name="Optional XLS Formatter">The XLS Formatter input port potentially holding previous formatting instructions that the instructions of this node shall be added to.</inPort>
+		<outPort index="0" name="XLS Formatter">The XLS Formatter output port holding the collected formatting instructions including the added formatting information from this node.</outPort>
+    </ports>
+  
+</knimeNode>

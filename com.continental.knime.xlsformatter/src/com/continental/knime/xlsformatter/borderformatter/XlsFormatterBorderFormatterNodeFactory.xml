@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./borderformatter.png" type="Manipulator"
+	xmlns="http://knime.org/node/v2.8"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+	<name>XLS Border Formatter</name>
+
+	<shortDescription>
+		The XLS Border Formatter node changes cell borders of a given range (not necessarily rectangular) specified by tags in a control table.
+		You can select which borders of the matching cells shall be displayed in which style and optionally also change the border color accordingly.
+	</shortDescription>
+
+	<fullDescription>
+		<intro>
+			The XLS Border Formatter node changes cell borders of a given range (not necessarily rectangular) specified by tags in a control table.
+			You can select which borders of the matching cells shall be displayed in which style and optionally also change the border color accordingly.<p />
+			This node defines a formatting instruction only. It needs to be written to an xlsx file via the <i>XLS Formatter (apply)</i> node subsequently.
+		</intro>
+
+		<tab name="Tag Selection">
+			<option name="applies to tag (single tag only)">Tag in your input table for which the formatting of this node should be applied to.
+			</option>
+			<option name="applies to all tags">Instead of specifying a single tag, the border formatting is applied repetitively to all distinct tags found in the control table. Note that in this case, no comma-separated tag list splitting is applied but the full cell content qualifies as a tag.<p />
+				This option	eases definition of adjacent border ranges based on the original data table's values.
+			</option>
+		</tab>
+
+		<tab name="Border Style and Color">
+			<option name="border style">Select the style your border should get (e.g. normal, thick, dashed, ...).
+			</option>
+			<option name="Change color?">If you want to change the color you can enable it here.
+			</option>
+			<option name="color">Select the color using the color pane.</option>
+		</tab>
+
+		<tab name="Outer Border Settings">
+			<option name="top">Set the top outer border of your tag range(s).
+			</option>
+			<option name="left">Set the left outer border of your tag range(s).
+			</option>
+			<option name="right">Set the right outer border of your tag range(s).
+			</option>
+			<option name="bottom">Set the bottom outer border of your tag range(s).
+			</option>
+		</tab>
+
+		<tab name="Inner Border Settings">
+			<option name="inner vertical">Set the inner vertical border of your tag range(s).
+			</option>
+			<option name="inner horizontal">Set the inner horizontal border of your tag range(s).
+			</option>
+		</tab>
+
+
+	</fullDescription>
+
+	<ports>
+		<inPort index="0" name="Control Table">XLS Control Table holding tags that define which cells of the sheet to format.
+		</inPort>
+		<inPort index="1" name="Optional XLS Formatter">The XLS Formatter input port potentially holding previous formatting instructions that the instructions of this node shall be added to.
+		</inPort>
+		<outPort index="0" name="XLS Formatter">The XLS Formatter output port holding the collected formatting instructions including the added formatting information from this node.
+		</outPort>
+	</ports>
+
+</knimeNode>

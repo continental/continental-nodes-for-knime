@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./cellformatter.png" type="Manipulator" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+    <name>XLS Cell Formatter</name>
+    
+  	<shortDescription>
+       The XLS Cell Formatter changes certain cell-level formatting options of selected cells, such as text alignment, rotation, and text format.
+   	</shortDescription>
+    
+    <fullDescription>
+        <intro>
+	       The XLS Cell Formatter changes certain cell-level formatting options of selected cells, such as text alignment, rotation, and text format.<p />
+	       This node defines a formatting instruction only which needs to be written to an xlsx file via the <i>XLS Formatter (apply)</i> node subsequently.
+    	</intro>
+    	
+		<tab name="Tag Selection">
+            <option name="applies to tag (single tag only)">Tag in your input table for which the formatting of this node should be applied to. </option>
+  		</tab>
+        
+        <tab name="Text Position and Format">
+            <option name="horizontal alignment">Pick the horizontal alignment of your text in the respective cell (e.g. left, center, right). </option>
+            <option name="vertical alignment">Pick the vertical alignment of your text in the respective cell (e.g. top, middle, bottom). </option>
+            <option name="text rotation angle">Set the angle by which your text in the cell should be rotated.</option>
+            <option name="word wrap">Select whether long text shall be wrapped to new lines within cells.</option>
+            <option name="text format">Define the text format of you cell (e.g. percent: 0.00% , whole number: #,##0, ...). Please use only English locale values, irrespective of your target or local environment.</option>
+        </tab>        
+
+    </fullDescription>
+    
+    <ports>
+        <inPort index="0" name="Control Table">XLS Control Table holding tags that define which cells of the sheet to format.</inPort>
+		<inPort index="1" name="Optional XLS Formatter">The XLS Formatter input port potentially holding previous formatting instructions that the instructions of this node shall be added to.</inPort>
+		<outPort index="0" name="XLS Formatter">The XLS Formatter output port holding the collected formatting instructions including the added formatting information from this node.</outPort>
+    </ports>
+</knimeNode>

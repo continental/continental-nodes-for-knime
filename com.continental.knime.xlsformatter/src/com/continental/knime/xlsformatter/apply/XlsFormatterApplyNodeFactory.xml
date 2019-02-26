@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./apply.png" type="Sink" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+    <name>XLS Formatter (apply)</name>
+    
+    <shortDescription>
+       The XLS Formatter (apply) node applies the chained commands from XLS Formatter nodes to an unformatted xlsx file.
+   	</shortDescription>
+    
+    <fullDescription>
+        <intro>
+        The XLS Formatter (apply) node applies the chained commands from XLS Formatter nodes to an unformatted xlsx file.<p />
+        All previous XLS Formatter nodes do not modify any xlsx files yet but prepare the formatting steps to be taken here.
+        The input file may not contain any formatting yet (except very few styles that are tolerated due to date/time values handling).
+    	</intro>
+            
+        <tab name="IO Options">
+            <option name="Input File">File-path of your raw input xlsx file.</option>
+        	<option name="Output File">File-path of your formatted output xlsx file.</option>
+		</tab>
+        
+        <tab name="Advanced Options">
+            <option name="overwrite output file">If a file already exists in the output directory the file will either be over-written or an error will be generated.</option>
+            <option name="open output file after execution">Once the node execution has been finished, the output xlsx file will be opened.</option>
+        </tab>
+
+    </fullDescription>
+    
+    <ports>
+        <inPort index="0" name="XLS Formatter">The XLS Formatter input port holding the collected formatting instructions for your xlsx file.</inPort>
+    </ports>    
+</knimeNode>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./networkcomponentsplitter.png" type="Manipulator" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+    <name>Network Component Splitter</name>
+    
+    <shortDescription>
+        
+    </shortDescription>
+    
+    <fullDescription>
+        <intro>This node analyzes a list of relations between nodes for unconnected network components. It expects an input table with two String columns containing (named) nodes of a network. A row represents a connection between the two nodes. The output is a two-column table stating each node and its cluster ID. All nodes with the same cluster ID are transitively connected to each other but to no other node of any other cluster.
+        <p /> 
+        Cluster numbering starts at 1 and gaps are avoided, meaning that the maximum cluster ID represents the total number of unconnected network components. The output table is sorted according to ascending cluster IDs. The order of the clusters is unspecified. Note that cluster 1 needs not to be the biggest cluster.
+        <p /> 
+        While this functionality can also be implemented via the <i>Network To Row</i> node and its 'Split-up unconnected components' option, our implementation is tuned for performance and large networks. Thus, it does not operate on KNIME's network data type but on an edge definition table with String-typed node columns directly.
+		<p /> 
+		Examples for this node's applicability are:<br /> 
+	    ● In production, new products can be assigned to facilities at minimal footprint complexity by keeping distinct material clusters in distinct entities.<br /> 
+	    ● In logistics, hazardous goods can be analyzed for the ability to ship in one delivery.<br />
+	    ● In human relations, an organizational chart analysis can reveal data quality issues with employees whose reporting lines do not end at the CEO.<br />
+         
+		</intro>
+		<tab name ="Node Selection">
+        	<option name="Select Node1 Column">The input table's String-typed column holding the name of the first node that represents an edge in the network. </option>
+        	<option name="Select Node2 Column">The input table's String-typed column holding the name of the second node that represents an edge in the network. </option>
+        </tab>
+        <tab name ="Missing Value Handling">
+        	<option name="Handle Missing Value as Node">If checked, the missing value is treated as a valid node name and will appear as a node in the output table. <br /> 
+        If unchecked, missing values are resolved by (1) ignoring edges of both missing values and (2) treating edges between a valid String and a missing value as self-relation of the valid String node. Hence, if unchecked, missing value will not appear in the output table.</option>
+        </tab>
+        <tab name ="Output Column Names">
+        	<option name="Nodelist Column Name">Name of the output table's first column, containing node names originating from both columns of the input table.</option>
+        	<option name="ClusterID Column Name">Name of the output table's second column, assigning a cluster ID to every node name.</option>
+        </tab>
+
+    </fullDescription>
+    
+    <ports>
+        <inPort index="0" name="Network Definition Table">Table which includes at least two String-typed columns. All unique values of the union of these two columns represent the node names of the network. Each row represents an (undirected) edge between the two respective nodes.</inPort>
+        <outPort index="0" name="Network Component List">The output table is a unique list of nodes and their assigned cluster IDs.</outPort>
+    </ports>    
+
+</knimeNode>
