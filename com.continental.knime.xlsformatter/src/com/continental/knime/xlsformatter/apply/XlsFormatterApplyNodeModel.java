@@ -18,7 +18,6 @@
 
 package com.continental.knime.xlsformatter.apply;
 
-import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -37,6 +36,7 @@ import org.knime.core.node.defaultnodesettings.SettingsModelString;
 import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.port.PortType;
+import org.knime.core.util.DesktopUtil;
 
 import com.continental.knime.xlsformatter.commons.WarningMessageContainer;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterState;
@@ -106,12 +106,9 @@ public class XlsFormatterApplyNodeModel extends NodeModel {
 
 		// open file:
 		if (m_openoutputfile.getBooleanValue()) {
-			if (Desktop.isDesktopSupported()) {
-				Desktop desktop = Desktop.getDesktop();
-				File file = new File(out);
-				if (desktop != null && file != null)
-					desktop.open(file);
-			}
+			File file = new File(out);
+			if (file != null)
+				DesktopUtil.open(file);
 		}
 		return new PortObject[] {};
 	}

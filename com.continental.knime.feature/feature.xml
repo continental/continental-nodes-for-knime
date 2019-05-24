@@ -2,7 +2,7 @@
 <feature
       id="com.continental.knime.feature"
       label="Continental Nodes for KNIME"
-      version="0.8.0.vqualifier"
+      version="0.8.2.qualifier"
       provider-name="Continental">
 
    <description>

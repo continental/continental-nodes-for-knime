@@ -24,10 +24,13 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.IdentityHashMap;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.time.DateUtils;
@@ -443,7 +446,9 @@ public class XlsFormatterApplyLogic {
 	 */
 	public static int getNumberOfNecessaryStyles(final XlsFormatterState xlsf,
 			final ExecutionContext exec, final NodeLogger logger) throws Exception {
-		return deriveNecessaryStyles(null, xlsf, exec, logger).size();
+		Set<XSSFCellStyle> set = Collections.newSetFromMap(new IdentityHashMap<>()); // workaround to achieve a duplicate resolution based on object identity instead of content
+		set.addAll(deriveNecessaryStyles(null, xlsf, exec, logger).values()); // deriveNecessaryStyles called without a workbook creates a dummy XSSFCellStyle per new Style String (but all of these are content wise identical, hence their total count is determined via the identity-based set workaround of the previous line. 
+		return set.size();
 	}
 	
 	public static void checkDerivedStyleComplexity(XlsFormatterState state, WarningMessageContainer warningMessageContainer,

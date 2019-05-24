@@ -79,7 +79,7 @@ public class XlsFormatterApplyXlsfToPoiConversions {
 	public static XSSFCellStyle createCellStyle(Workbook workbook, CellState cellState, XSSFFont font, Integer numberFormatCode) {
 		
 		if (workbook == null)
-			return null;
+			return new XSSFCellStyle(null);
 		
 		XSSFCellStyle style = (XSSFCellStyle)workbook.createCellStyle();
 		
