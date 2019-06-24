@@ -7,10 +7,10 @@ Bundle-ClassPath: utility.jar
 Bundle-Activator: com.continental.knime.utility.networkcomponentsplitter.NetworkComponentSplitterNodePlugin
 Bundle-Vendor: Continental
 Require-Bundle: org.eclipse.core.runtime,
- org.knime.workbench.core;bundle-version="[3.7.0,4.0.0)",
- org.knime.workbench.repository;bundle-version="[3.7.0,4.0.0)",
- org.knime.base;bundle-version="[3.7.0,4.0.0)",
+ org.knime.workbench.core;bundle-version="[3.7.0,5.0.0)",
+ org.knime.workbench.repository;bundle-version="[3.7.0,5.0.0)",
+ org.knime.base;bundle-version="[3.7.0,5.0.0)",
  org.knime.core.util;bundle-version="[5.10.0,6.0.0)",
- org.knime.product;bundle-version="[3.7.0,4.0.0)"
+ org.knime.product;bundle-version="[3.7.0,5.0.0)"
 Bundle-ActivationPolicy: lazy
 Export-Package: com.continental.knime.utility.networkcomponentsplitter
