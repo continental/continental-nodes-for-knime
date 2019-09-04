@@ -41,7 +41,6 @@ import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.port.PortType;
 
-import com.continental.knime.xlsformatter.apply.XlsFormatterApplyLogic;
 import com.continental.knime.xlsformatter.commons.AddressingTools;
 import com.continental.knime.xlsformatter.commons.TagBasedXlsCellFormatterNodeModel;
 import com.continental.knime.xlsformatter.commons.WarningMessageContainer;
@@ -49,6 +48,8 @@ import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableAnalys
 import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableValidator;
 import com.continental.knime.xlsformatter.commons.XlsFormatterTagTools;
 import com.continental.knime.xlsformatter.commons.XlsFormatterUiOptions;
+import com.continental.knime.xlsformatter.commons.XlsFormattingStateValidator;
+import com.continental.knime.xlsformatter.commons.XlsFormattingStateValidator.ValidationModes;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterState;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterState.FormattingFlag;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterStateSpec;
@@ -60,10 +61,10 @@ public class XlsFormatterFontFormatterNodeModel extends TagBasedXlsCellFormatter
 			.getLogger(XlsFormatterFontFormatterNodeModel.class);
 
 	//Input tag string
-	static final String CFGKEY_TAGSTRING = "Tag";
-	static final String DEFAULT_TAGSTRING = "header";
-	final SettingsModelString m_tagstring =
-			new SettingsModelString(CFGKEY_TAGSTRING, DEFAULT_TAGSTRING);    
+	static final String CFGKEY_TAG = "Tag";
+	static final String DEFAULT_TAG = "header";
+	final SettingsModelString m_tag =
+			new SettingsModelString(CFGKEY_TAG, DEFAULT_TAG);    
 
 	static final String CFGKEY_BOLD = "Bold";
 	static final boolean DEFAULT_BOLD = false;
@@ -82,7 +83,7 @@ public class XlsFormatterFontFormatterNodeModel extends TagBasedXlsCellFormatter
 
 	static final String CFGKEY_CHANGESIZE = "ChangeSize";
 	static final boolean DEFAULT_CHANGESIZE = false;
-	final SettingsModelBoolean m_changesize =
+	final SettingsModelBoolean m_changeSize =
 			new SettingsModelBoolean(CFGKEY_CHANGESIZE, DEFAULT_CHANGESIZE);  
 
 	static final String CFGKEY_SIZE = "Size";
@@ -92,12 +93,12 @@ public class XlsFormatterFontFormatterNodeModel extends TagBasedXlsCellFormatter
 
 	static final String CFGKEY_CHANGECOLOR = "ChangeColor";
 	static final boolean DEFAULT_CHANGECOLOR = false;
-	final SettingsModelBoolean m_changecolor =
+	final SettingsModelBoolean m_changeColor =
 			new SettingsModelBoolean(CFGKEY_CHANGECOLOR, DEFAULT_CHANGECOLOR);  
 
 	static final String CFGKEY_FONTCOLOR = "FontColor";
 	static final Color DEFAULT_FONTCOLOR = new Color(0,0,0);
-	final SettingsModelColor m_fontcolor =
+	final SettingsModelColor m_fontColor =
 			new SettingsModelColor(CFGKEY_FONTCOLOR, DEFAULT_FONTCOLOR);
 
 
@@ -120,13 +121,20 @@ public class XlsFormatterFontFormatterNodeModel extends TagBasedXlsCellFormatter
 			throw new IllegalArgumentException("The provided input table is not a valid XLS control table. See log for details.");
 
 		XlsFormatterState xlsf = XlsFormatterState.getDeepClone(inObjects[1]);
+		XlsFormatterState.SheetState xlsfs = xlsf.getCurrentSheetStateForModification();
+		WarningMessageContainer warningMessageContainer = new WarningMessageContainer();
 
 		List<CellAddress> targetCells =
-				XlsFormatterControlTableAnalysisTools.getCellsMatchingTag((BufferedDataTable)inObjects[0], m_tagstring.getStringValue().trim(), exec, logger);
-		warnOnNoMatchingTags(targetCells, m_tagstring.getStringValue().trim());
+				XlsFormatterControlTableAnalysisTools.getCellsMatchingTag((BufferedDataTable)inObjects[0], m_tag.getStringValue().trim(), exec, logger);
+		warnOnNoMatchingTags(targetCells, m_tag.getStringValue().trim(), warningMessageContainer);
+		
+		// check for a partly overlap of these target cells with a previously merged range and warn
+		String mergeOverlapRanges = XlsFormatterControlTableAnalysisTools.getOverlappingRanges(targetCells, xlsfs.mergeRanges, exec, logger);
+		if (mergeOverlapRanges != null)
+			warningMessageContainer.addMessage("Modification on parts of previously merged range(s) (" + mergeOverlapRanges + ") will have no effect.");
 
 		for (CellAddress cell : targetCells) {
-			XlsFormatterState.CellState cellState = AddressingTools.safelyGetCellInMap(xlsf.cells, cell);
+			XlsFormatterState.CellState cellState = AddressingTools.safelyGetCellInMap(xlsfs.cells, cell);
 
 			FormattingFlag flag = XlsFormatterUiOptions.getFormattingFlagFromBoolean(m_bold.getBooleanValue());
 			if (flag != FormattingFlag.UNMODIFIED)
@@ -140,15 +148,14 @@ public class XlsFormatterFontFormatterNodeModel extends TagBasedXlsCellFormatter
 			if (flag != FormattingFlag.UNMODIFIED)
 				cellState.fontUnderline = flag;
 
-			if (m_changesize.getBooleanValue())
+			if (m_changeSize.getBooleanValue())
 				cellState.fontSize = m_size.getIntValue();
 
-			if (m_changecolor.getBooleanValue())
-				cellState.fontColor = m_fontcolor.getColorValue();
+			if (m_changeColor.getBooleanValue())
+				cellState.fontColor = m_fontColor.getColorValue();
 		}
-
-		WarningMessageContainer warningMessageContainer = new WarningMessageContainer(); 
-		XlsFormatterApplyLogic.checkDerivedStyleComplexity(xlsf, warningMessageContainer, exec, logger);
+		
+		XlsFormattingStateValidator.validateState(xlsf, ValidationModes.STYLES, warningMessageContainer, exec, logger);
 		if (warningMessageContainer.hasMessage())
 			setWarningMessage(warningMessageContainer.getMessage());
 
@@ -160,17 +167,14 @@ public class XlsFormatterFontFormatterNodeModel extends TagBasedXlsCellFormatter
 	protected PortObjectSpec[] configure(final PortObjectSpec[] inSpecs)
 			throws InvalidSettingsException {   	
 
-		if (m_tagstring.getStringValue().trim().equals(""))
+		if (m_tag.getStringValue().trim().equals(""))
 			throw new IllegalArgumentException("Empty tag is not allowed, you need to enter something here that is also present in your control table (e.g., \"x\" or \"data\"");
 
-		if (!XlsFormatterTagTools.isValidSingleTag(m_tagstring.getStringValue().trim()))
+		if (!XlsFormatterTagTools.isValidSingleTag(m_tag.getStringValue().trim()))
 			throw new IllegalArgumentException("Only a single tag is allowed, no comma-separated list.");
 
 		if (!XlsFormatterControlTableValidator.isControlTableSpec((DataTableSpec)inSpecs[0], logger))
 			throw new InvalidSettingsException("The configured input table header is not that of a valid XLS Formatting control table. See log for details.");
-
-		if (inSpecs[1] != null && ((XlsFormatterStateSpec)inSpecs[1]).getContainsMergeInstruction() == true)
-			throw new InvalidSettingsException("No futher XLS Formatting nodes allowed after Cell Merger.");
 
 		return new PortObjectSpec[] { inSpecs[1] == null ? XlsFormatterStateSpec.getEmptySpec() : ((XlsFormatterStateSpec)inSpecs[1]).getCopy() };
 	}
@@ -189,17 +193,17 @@ public class XlsFormatterFontFormatterNodeModel extends TagBasedXlsCellFormatter
 	@Override
 	protected void saveSettingsTo(final NodeSettingsWO settings) {
 
-		m_size.setEnabled(m_changesize.getBooleanValue());
-		m_fontcolor.setEnabled(m_changecolor.getBooleanValue());
+		m_size.setEnabled(m_changeSize.getBooleanValue());
+		m_fontColor.setEnabled(m_changeColor.getBooleanValue());
 
-		m_tagstring.saveSettingsTo(settings);
+		m_tag.saveSettingsTo(settings);
 		m_bold.saveSettingsTo(settings);
 		m_italic.saveSettingsTo(settings);
 		m_underline.saveSettingsTo(settings);
 		m_size.saveSettingsTo(settings);
-		m_fontcolor.saveSettingsTo(settings);
-		m_changesize.saveSettingsTo(settings);
-		m_changecolor.saveSettingsTo(settings);
+		m_fontColor.saveSettingsTo(settings);
+		m_changeSize.saveSettingsTo(settings);
+		m_changeColor.saveSettingsTo(settings);
 	}
 
 	/**
@@ -209,14 +213,14 @@ public class XlsFormatterFontFormatterNodeModel extends TagBasedXlsCellFormatter
 	protected void loadValidatedSettingsFrom(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 
-		m_tagstring.loadSettingsFrom(settings);
+		m_tag.loadSettingsFrom(settings);
 		m_bold.loadSettingsFrom(settings);
 		m_italic.loadSettingsFrom(settings);
 		m_underline.loadSettingsFrom(settings);
 		m_size.loadSettingsFrom(settings);
-		m_fontcolor.loadSettingsFrom(settings);
-		m_changesize.loadSettingsFrom(settings);
-		m_changecolor.loadSettingsFrom(settings);
+		m_fontColor.loadSettingsFrom(settings);
+		m_changeSize.loadSettingsFrom(settings);
+		m_changeColor.loadSettingsFrom(settings);
 	}
 
 	/**
@@ -226,14 +230,14 @@ public class XlsFormatterFontFormatterNodeModel extends TagBasedXlsCellFormatter
 	protected void validateSettings(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 
-		m_tagstring.validateSettings(settings);
+		m_tag.validateSettings(settings);
 		m_bold.validateSettings(settings);
 		m_italic.validateSettings(settings);
 		m_underline.validateSettings(settings);
 		m_size.validateSettings(settings);
-		m_fontcolor.validateSettings(settings);
-		m_changesize.validateSettings(settings);
-		m_changecolor.validateSettings(settings);
+		m_fontColor.validateSettings(settings);
+		m_changeSize.validateSettings(settings);
+		m_changeColor.validateSettings(settings);
 	}
 
 	/**

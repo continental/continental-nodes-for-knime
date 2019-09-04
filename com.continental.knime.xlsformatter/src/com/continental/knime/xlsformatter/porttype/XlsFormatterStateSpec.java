@@ -30,21 +30,13 @@ import org.knime.core.node.port.PortObjectSpec;
 public class XlsFormatterStateSpec implements PortObjectSpec, Externalizable {
 	
 	private static final long serialVersionUID = 1L;
-	
-	/**
-	 * Defines whether the chain of XLS Formatter instruction so far has seen any cell merge instruction.
-	 * Used to deny further adding non-cell merge operations as cell merge needs to come last in the chain.
-	 */
-	private boolean _containsMergeInstruction = false;
+	private static final long masterSerializationVersion = 3L;
 	
 	@Override
 	public JComponent[] getViews() {
 		
 		return new JComponent[] { };
 	}
-	
-	public boolean getContainsMergeInstruction() { return _containsMergeInstruction; }
-	public void setContainsMergeInstruction(boolean value) { _containsMergeInstruction = value; }
 	
 	@Override
 	public String toString() {
@@ -57,19 +49,39 @@ public class XlsFormatterStateSpec implements PortObjectSpec, Externalizable {
 	
 	public XlsFormatterStateSpec getCopy() {
 		XlsFormatterStateSpec ret = new XlsFormatterStateSpec();
-		ret._containsMergeInstruction = _containsMergeInstruction;
+		// if there are fields to this spec in the future, assign the member value to ret here
 		return ret;
 	}
 
 	@Override
 	public void writeExternal(ObjectOutput out) throws IOException {
-		out.writeLong(serialVersionUID);
-		out.writeBoolean(_containsMergeInstruction);
+		out.writeLong(masterSerializationVersion);
+		out.writeBoolean(false); // due to version 1L
+		
+		/* Earliest old serialization version that this file can still be read/deserialized with.
+		 * This concept provides a chance to selectively allow upward compatibility. (Downward compatibility shall always be
+		 * supported.) When reading a file written by this method in an older code version, the above written masterSerializationVersion
+		 * is first checked. Naively, the old code would throw an exception if a newer (i.e. higher) version is read (because
+		 * the newer code could define a different byte stream even for the beginning of the file). However, newer code
+		 * can write the earliest previous serialization version that is already capable to read this newer byte stream,
+		 * despite not knowing about the additional content (i.e. typically since the changes in the versions since then
+		 * are only appended at the end of the byte stream).
+		 * 
+		 * History:
+		 * version 1, (selective upward compatibility not yet implemented)
+		 * version 3, earliestSerializationVersionCapableOfReadingThis 1 (because new features are only added at the end of the byte stream)
+		 */
+		out.writeLong(1L); // WARNING: if unsure, set this one to masterSerializationVersion
 	}
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		in.readLong(); // long readSerialVersionUid
-		_containsMergeInstruction = in.readBoolean();
+		long readSerializationVersion = in.readLong(); // the masterSerializationVersion of the code state that this object has originally been written with
+		in.readBoolean(); // due to deprecated containsMergeInstruction in version 1L
+		if (readSerializationVersion >= 3L) {
+			long earliestSerializationVersionCapableOfReadingThis = in.readLong();
+			if (masterSerializationVersion < readSerializationVersion && masterSerializationVersion < earliestSerializationVersionCapableOfReadingThis)
+				throw new ClassNotFoundException("You are trying to read a XLS Formatting node configuration that has been written with a newer version of the extension than the one currently executing. Upward compatibility is not supported. Please update to the newest version.");
+		}
 	}
 }

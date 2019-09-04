@@ -79,8 +79,10 @@ public class XlsControlTableGeneratorFunctionDerivePivoted {
 		}
 		outBuffer.close();
 		
-		if (hasSeenInvalidTagList)
-			warningMessageContainer.addMessage("Warning: The generated table is not yet a valid XLS Formatter Control Table as it contains invalid characters in some tags.");
+		if (hasSeenInvalidTagList) {
+			warningMessageContainer.addMessage("Warning: The generated table is not a fully valid XLS Formatter Control Table as it contains invalid characters in tags. See log for details.");
+			logger.warn("Cells of a XLS Formatter Control Table shall contain comma-separated lists of tags. Tags are typically user chosen and speaking names, e.g. 'header' or 'totals'. Valid tags do not contain any of the letters '" + XlsFormatterTagTools.INVALID_TAGLIST_CHARACTERS + "'. This warning can be ignored for some special features, e.g. the 'applies to all tags' option of the XLS Border Formatter node.");
+		}
 		
 		return new BufferedDataTable[] { outBuffer.getTable() };
 	}

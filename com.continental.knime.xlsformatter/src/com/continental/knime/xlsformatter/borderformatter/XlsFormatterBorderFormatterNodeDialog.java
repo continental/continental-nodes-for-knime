@@ -24,7 +24,9 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import org.knime.core.node.InvalidSettingsException;
+import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
+import org.knime.core.node.NotConfigurableException;
 import org.knime.core.node.defaultnodesettings.DefaultNodeSettingsPane;
 import org.knime.core.node.defaultnodesettings.DialogComponentBoolean;
 import org.knime.core.node.defaultnodesettings.DialogComponentColorChooser;
@@ -33,6 +35,7 @@ import org.knime.core.node.defaultnodesettings.DialogComponentStringSelection;
 import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
 import org.knime.core.node.defaultnodesettings.SettingsModelColor;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
+import org.knime.core.node.port.PortObjectSpec;
 
 import com.continental.knime.xlsformatter.commons.UiValidation;
 import com.continental.knime.xlsformatter.commons.XlsFormatterUiOptions;
@@ -51,6 +54,7 @@ public class XlsFormatterBorderFormatterNodeDialog extends DefaultNodeSettingsPa
 	SettingsModelString tag;
 	SettingsModelBoolean allTags;
 	SettingsModelBoolean borderChangeColor;
+	SettingsModelColor borderColor;
 	SettingsModelBoolean borderTop;
 	SettingsModelBoolean borderLeft;
 	SettingsModelBoolean borderRight;
@@ -58,17 +62,19 @@ public class XlsFormatterBorderFormatterNodeDialog extends DefaultNodeSettingsPa
 	SettingsModelBoolean borderInnerVertical;
 	SettingsModelBoolean borderInnerHorizontal;
 	
+	ChangeListener changeListener = new BorderDialogChangeListener();
+	
 	protected XlsFormatterBorderFormatterNodeDialog() {
 		super();
 
 		this.createNewGroup("Tag Selection");
 		this.setHorizontalPlacement(true);
 		tag = new SettingsModelString(XlsFormatterBorderFormatterNodeModel.CFGKEY_TAGSTRING, XlsFormatterBorderFormatterNodeModel.DEFAULT_TAGSTRING);
-		DialogComponentString tagstringComponent = new DialogComponentString(tag , XlsFormatterUiOptions.UI_LABEL_SINGLE_TAG);
+		DialogComponentString tagstringComponent = new DialogComponentString(tag, XlsFormatterUiOptions.UI_LABEL_SINGLE_TAG, true, 12);
 		this.addDialogComponent(tagstringComponent);
 		
 		allTags = new SettingsModelBoolean(XlsFormatterBorderFormatterNodeModel.CFGKEY_ALL_TAGS, XlsFormatterBorderFormatterNodeModel.DEFAULT_ALL_TAGS);
-		DialogComponentBoolean alltagsComponent = new DialogComponentBoolean(allTags,"applies to all tags");
+		DialogComponentBoolean alltagsComponent = new DialogComponentBoolean(allTags, "applies to all tags");
 		this.addDialogComponent(alltagsComponent);
 		this.setHorizontalPlacement(false);
 
@@ -85,7 +91,7 @@ public class XlsFormatterBorderFormatterNodeDialog extends DefaultNodeSettingsPa
 		this.addDialogComponent(new DialogComponentBoolean(
 				borderChangeColor, "Change border color?"));
 		
-		SettingsModelColor borderColor = new SettingsModelColor(XlsFormatterBorderFormatterNodeModel.CFGKEY_BORDER_COLOR, XlsFormatterBorderFormatterNodeModel.DEFAULT_BORDER_COLOR);
+		borderColor = new SettingsModelColor(XlsFormatterBorderFormatterNodeModel.CFGKEY_BORDER_COLOR, XlsFormatterBorderFormatterNodeModel.DEFAULT_BORDER_COLOR);
 		this.addDialogComponent(new DialogComponentColorChooser(
 				borderColor, "border color",true));
 		this.setHorizontalPlacement(false);
@@ -122,17 +128,16 @@ public class XlsFormatterBorderFormatterNodeDialog extends DefaultNodeSettingsPa
 				borderInnerHorizontal, "inner horizontal"));
 		this.setHorizontalPlacement(false);
 
-		borderChangeColor.addChangeListener(new ChangeListener(){
-			public void stateChanged(final ChangeEvent e) {
-				borderColor.setEnabled(borderChangeColor.getBooleanValue());
-			}
-		});
-
-		allTags.addChangeListener(new ChangeListener(){
-			public void stateChanged(final ChangeEvent e) {
-				tag.setEnabled(!allTags.getBooleanValue());
-			}
-		});
+		
+		borderChangeColor.addChangeListener(changeListener);
+		allTags.addChangeListener(changeListener);		
+	}
+	
+	class BorderDialogChangeListener implements ChangeListener {
+		public void stateChanged(final ChangeEvent e) {
+			borderColor.setEnabled(borderChangeColor.getBooleanValue());
+			tag.setEnabled(!allTags.getBooleanValue());
+		}
 	}
 	
 	@Override
@@ -145,6 +150,13 @@ public class XlsFormatterBorderFormatterNodeDialog extends DefaultNodeSettingsPa
 		if (!borderTop.getBooleanValue() && !borderLeft.getBooleanValue() && !borderRight.getBooleanValue() &&
 				!borderBottom.getBooleanValue() && !borderInnerVertical.getBooleanValue() && !borderInnerHorizontal.getBooleanValue())
 			throw new InvalidSettingsException("At least one border option needs to be activated, otherwise this node would be of no effect.");
+	}
+	
+	@Override
+	public void loadAdditionalSettingsFrom(NodeSettingsRO settings, PortObjectSpec[] specs)
+			throws NotConfigurableException {
+		super.loadAdditionalSettingsFrom(settings, specs);
+		changeListener.stateChanged(null);
 	}
 }
 

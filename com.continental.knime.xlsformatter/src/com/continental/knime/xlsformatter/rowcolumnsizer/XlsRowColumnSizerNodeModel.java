@@ -66,7 +66,7 @@ public class XlsRowColumnSizerNodeModel extends TagBasedXlsCellFormatterNodeMode
 		public String toString() {
 			switch (this) {
 			case STANDARD:
-				return XlsFormatterUiOptions.UI_LABEL_CONTROLTABLESTYLE_STANDARD;
+				return XlsFormatterUiOptions.UI_LABEL_CONTROL_TABLE_STYLE_STANDARD;
 			case DIRECT:
 				return "size from control table";
 			default:
@@ -78,10 +78,10 @@ public class XlsRowColumnSizerNodeModel extends TagBasedXlsCellFormatterNodeMode
 	    return XlsFormatterUiOptions.getEnumEntryFromString(ControlTableStyle.values(), value);
 		}
 	}
-	static final String CFGKEY_CONTROLTABLESTYLE = XlsFormatterUiOptions.UI_LABEL_CONTROLTABLESTYLE_KEY;
-	static final String DEFAULT_CONTROLTABLESTYLE = ControlTableStyle.STANDARD.toString();
-	final SettingsModelString m_controltablestyle =
-			new SettingsModelString(CFGKEY_CONTROLTABLESTYLE, DEFAULT_CONTROLTABLESTYLE);   	
+	static final String CFGKEY_CONTROL_TABLE_STYLE = XlsFormatterUiOptions.UI_LABEL_CONTROL_TABLE_STYLE_KEY;
+	static final String DEFAULT_CONTROL_TABLE_STYLE = ControlTableStyle.STANDARD.toString();
+	final SettingsModelString m_controlTableStyle =
+			new SettingsModelString(CFGKEY_CONTROL_TABLE_STYLE, DEFAULT_CONTROL_TABLE_STYLE);   	
 
 	public enum DimensionToSize {
 		ROW,
@@ -109,10 +109,10 @@ public class XlsRowColumnSizerNodeModel extends TagBasedXlsCellFormatterNodeMode
 	final SettingsModelString m_rowColumnSize =
 			new SettingsModelString(CFGKEY_ROW_COLUMN_SIZE, DEFAULT_ROW_COLUMN_SIZE);
 
-	static final String CFGKEY_TAGSTRING = "Tag";
-	static final String DEFAULT_TAGSTRING = "header";
-	final SettingsModelString m_tagstring =
-			new SettingsModelString(CFGKEY_TAGSTRING, DEFAULT_TAGSTRING);
+	static final String CFGKEY_TAG = "Tag";
+	static final String DEFAULT_TAG = "header";
+	final SettingsModelString m_tag =
+			new SettingsModelString(CFGKEY_TAG, DEFAULT_TAG);
 
 	static final String CFGKEY_SIZE = "Size";
 	static final double DEFAULT_SIZE = 14.0;
@@ -142,8 +142,9 @@ public class XlsRowColumnSizerNodeModel extends TagBasedXlsCellFormatterNodeMode
 	protected PortObject[] execute(PortObject[] inObjects, final ExecutionContext exec) throws Exception { 
 		
 		XlsFormatterState xlsf = XlsFormatterState.getDeepClone(inObjects[1]);
+		XlsFormatterState.SheetState xlsfs = xlsf.getCurrentSheetStateForModification();
 
-		ControlTableStyle controlTableStyle = ControlTableStyle.getFromString(m_controltablestyle.getStringValue());
+		ControlTableStyle controlTableStyle = ControlTableStyle.getFromString(m_controlTableStyle.getStringValue());
 		DimensionToSize dimension = DimensionToSize.getFromString(m_rowColumnSize.getStringValue());
 		
 		if (!XlsFormatterControlTableValidator.isControlTable((BufferedDataTable)inObjects[0],
@@ -164,22 +165,22 @@ public class XlsRowColumnSizerNodeModel extends TagBasedXlsCellFormatterNodeMode
 							(dimension == DimensionToSize.COLUMN ? CellReference.convertNumToColString(index) : index + 1) + ". Only one entry allowed per column/row.");
 				processedIndices.add(index);
 				if (dimension == DimensionToSize.COLUMN)
-					xlsf.columnWidths.put(index, cellContentMap.get(cell));
+					xlsfs.columnWidths.put(index, cellContentMap.get(cell));
 				else
-					xlsf.rowHeights.put(index, cellContentMap.get(cell));
+					xlsfs.rowHeights.put(index, cellContentMap.get(cell));
 			}
 		}
 		else { // standard tags provided in UI
 			
 			List<CellAddress> targetCells =
-					XlsFormatterControlTableAnalysisTools.getCellsMatchingTag((BufferedDataTable)inObjects[0], m_tagstring.getStringValue().trim(), exec, logger);
-			warnOnNoMatchingTags(targetCells, m_tagstring.getStringValue().trim());
+					XlsFormatterControlTableAnalysisTools.getCellsMatchingTag((BufferedDataTable)inObjects[0], m_tag.getStringValue().trim(), exec, logger);
+			warnOnNoMatchingTags(targetCells, m_tag.getStringValue().trim());
 			
 			for (CellAddress cell : targetCells) {
 				if (dimension == DimensionToSize.COLUMN)
-					xlsf.columnWidths.put(cell.getColumn(), m_autoSize.getBooleanValue() ? null : m_size.getDoubleValue());
+					xlsfs.columnWidths.put(cell.getColumn(), m_autoSize.getBooleanValue() ? null : m_size.getDoubleValue());
 				else
-					xlsf.rowHeights.put(cell.getRow(), m_size.getDoubleValue());
+					xlsfs.rowHeights.put(cell.getRow(), m_size.getDoubleValue());
 			}
 		}
 		
@@ -193,10 +194,7 @@ public class XlsRowColumnSizerNodeModel extends TagBasedXlsCellFormatterNodeMode
 		if (!XlsFormatterControlTableValidator.isControlTableSpecDoubleOrString((DataTableSpec)inSpecs[0], logger))
 			throw new InvalidSettingsException("The configured input table header is not that of a valid XLS Formatting control table. See log for details.");
 
-		if (inSpecs[1] != null && ((XlsFormatterStateSpec)inSpecs[1]).getContainsMergeInstruction() == true)
-			throw new InvalidSettingsException("No futher XLS Formatting nodes allowed after Cell Merger.");
-
-		m_controltablestyle.setStringValue(
+		m_controlTableStyle.setStringValue(
 				XlsFormatterControlTableAnalysisTools.isDoubleControlTableSpecCandidate((DataTableSpec)inSpecs[0]) ?
 						ControlTableStyle.DIRECT.toString() : ControlTableStyle.STANDARD.toString());
 		
@@ -216,12 +214,12 @@ public class XlsRowColumnSizerNodeModel extends TagBasedXlsCellFormatterNodeMode
 	@Override
 	protected void saveSettingsTo(final NodeSettingsWO settings) {
 		
-		m_autoSize.setEnabled(m_controltablestyle.getStringValue().equals(XlsFormatterUiOptions.UI_LABEL_CONTROLTABLESTYLE_STANDARD)&&
+		m_autoSize.setEnabled(m_controlTableStyle.getStringValue().equals(XlsFormatterUiOptions.UI_LABEL_CONTROL_TABLE_STYLE_STANDARD)&&
 						m_rowColumnSize.getStringValue().equals(DimensionToSize.COLUMN.toString()));
 		
-		m_controltablestyle.saveSettingsTo(settings);
+		m_controlTableStyle.saveSettingsTo(settings);
 		m_rowColumnSize.saveSettingsTo(settings);
-		m_tagstring.saveSettingsTo(settings);
+		m_tag.saveSettingsTo(settings);
 		m_size.saveSettingsTo(settings);
 		m_autoSize.saveSettingsTo(settings);
 	}
@@ -233,9 +231,9 @@ public class XlsRowColumnSizerNodeModel extends TagBasedXlsCellFormatterNodeMode
 	protected void loadValidatedSettingsFrom(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 		
-		m_controltablestyle.loadSettingsFrom(settings);
+		m_controlTableStyle.loadSettingsFrom(settings);
 		m_rowColumnSize.loadSettingsFrom(settings);
-		m_tagstring.loadSettingsFrom(settings);
+		m_tag.loadSettingsFrom(settings);
 		m_size.loadSettingsFrom(settings);
 		m_autoSize.loadSettingsFrom(settings);
 	}
@@ -247,9 +245,9 @@ public class XlsRowColumnSizerNodeModel extends TagBasedXlsCellFormatterNodeMode
 	protected void validateSettings(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 
-		m_controltablestyle.validateSettings(settings);
+		m_controlTableStyle.validateSettings(settings);
 		m_rowColumnSize.validateSettings(settings);
-		m_tagstring.validateSettings(settings);
+		m_tag.validateSettings(settings);
 		m_size.validateSettings(settings);
 		m_autoSize.validateSettings(settings);
 	}

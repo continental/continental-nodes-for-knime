@@ -64,6 +64,18 @@
             id="com.continental.knime.xlsformatter.sheetformatter.XlsFormatterSheetFormatterNodeFactory">
       </node>
       <node
+            category-path="/community/continental.nodes.for.knime/xlsformatter/"
+            deprecated="false"
+            factory-class="com.continental.knime.xlsformatter.sheetselector.XlsSheetSelectorNodeFactory"
+            id="com.continental.knime.xlsformatter.sheetselector.XlsFormatterSheetSelectorNodeFactory">
+      </node>
+      <node
+            category-path="/community/continental.nodes.for.knime/xlsformatter/"
+            deprecated="false"
+            factory-class="com.continental.knime.xlsformatter.portmerger.XlsPortMergerNodeFactory"
+            id="com.continental.knime.xlsformatter.portmerger.XlsPortMergerNodeFactory">
+      </node>
+      <node
             category-path="/community/continental.nodes.for.knime/xlsformatter/formatter/"
             deprecated="false"
             factory-class="com.continental.knime.xlsformatter.rowcolumnsizer.XlsRowColumnSizerNodeFactory"
@@ -116,6 +128,18 @@
             deprecated="false"
             factory-class="com.continental.knime.xlsformatter.conditionalformatter.XlsFormatterConditionalFormatterNodeFactory"
             id="com.continental.knime.xlsformatter.conditionalformatter.XlsFormatterConditionalFormatterNodeFactory">
+      </node>
+      <node
+            category-path="/community/continental.nodes.for.knime/xlsformatter/formatter/"
+            deprecated="false"
+            factory-class="com.continental.knime.xlsformatter.commenter.XlsFormatterCommenterNodeFactory"
+            id="com.continental.knime.xlsformatter.commenter.XlsFormatterCommenterNodeFactory">
+      </node>
+      <node
+            category-path="/community/continental.nodes.for.knime/xlsformatter/formatter/"
+            deprecated="false"
+            factory-class="com.continental.knime.xlsformatter.hyperlinker.XlsFormatterHyperlinkerNodeFactory"
+            id="com.continental.knime.xlsformatter.hyperlinker.XlsFormatterHyperlinkerNodeFactory">
       </node>
    </extension>
    <extension

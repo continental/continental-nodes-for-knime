@@ -54,20 +54,20 @@ public class XlsControlTableFromCellRangeNodeModel extends NodeModel {
 			.getLogger(XlsControlTableFromCellRangeNodeModel.class);
 
 
-	static final String CFGKEY_CELLRANGE_STRING = "CellRange";
-	static final String DEFAULT_CELLRANGE_STRING = "A1:B2";
-	final SettingsModelString m_cellRangeString =
-			new SettingsModelString(CFGKEY_CELLRANGE_STRING, DEFAULT_CELLRANGE_STRING);
+	static final String CFGKEY_CELLRANGE = "CellRange";
+	static final String DEFAULT_CELLRANGE = "A1:B2";
+	final SettingsModelString m_cellRange =
+			new SettingsModelString(CFGKEY_CELLRANGE, DEFAULT_CELLRANGE);
 
-	static final String CFGKEY_TAG_STRING = "Tag";
-	static final String DEFAULT_TAG_STRING = "header";
-	final SettingsModelString m_tagString =
-			new SettingsModelString(CFGKEY_TAG_STRING, DEFAULT_TAG_STRING);
+	static final String CFGKEY_TAG = "Tag";
+	static final String DEFAULT_TAG = "header";
+	final SettingsModelString m_tag =
+			new SettingsModelString(CFGKEY_TAG, DEFAULT_TAG);
 
-	static final String CFGKEY_MODE_STRING = "Mode";
-	static final String DEFAULT_MODE_STRING = Modes.APPEND.toString();
-	final SettingsModelString m_modeString =
-			new SettingsModelString(CFGKEY_MODE_STRING, DEFAULT_MODE_STRING);
+	static final String CFGKEY_MODE = "Mode";
+	static final String DEFAULT_MODE = Modes.APPEND.toString();
+	final SettingsModelString m_mode =
+			new SettingsModelString(CFGKEY_MODE, DEFAULT_MODE);
 
 	/**
 	 * Constructor for the node model.
@@ -87,14 +87,14 @@ public class XlsControlTableFromCellRangeNodeModel extends NodeModel {
 
 		CellRangeAddress range;
 		try {
-			range = AddressingTools.parseRange(m_cellRangeString.getStringValue().trim());
+			range = AddressingTools.parseRange(m_cellRange.getStringValue().trim());
 		}
 		catch (Exception e) {
-			throw new Exception("Invalid cell range " + m_cellRangeString.getStringValue().trim() + ". " + e.getMessage(), e);
+			throw new Exception("Invalid cell range " + m_cellRange.getStringValue().trim() + ". " + e.getMessage(), e);
 		}
 
 		if (!XlsFormatterControlTableValidator.isSheetSizeWithinXlsSpec(range.getLastColumn() + 1, range.getLastRow() + 1))
-			throw new Exception("Cell range exceeds XLS limits: " + m_cellRangeString.getStringValue().trim());
+			throw new Exception("Cell range exceeds XLS limits: " + m_cellRange.getStringValue().trim());
 
 
 		// generate new control table:
@@ -104,7 +104,7 @@ public class XlsControlTableFromCellRangeNodeModel extends NodeModel {
 		for (int r = 0; r <= range.getLastRow(); r++) {
 			DataCell[] cells = new DataCell[range.getLastColumn() + 1];
 			for (int c = 0; c <= range.getLastColumn(); c++)
-				cells[c] = range.containsColumn(c) && range.containsRow(r) ? new StringCell(m_tagString.getStringValue().trim()) : new MissingCell("");
+				cells[c] = range.containsColumn(c) && range.containsRow(r) ? new StringCell(m_tag.getStringValue().trim()) : new MissingCell("");
 				DataRow rowOut = new DefaultRow(rowKeyArr[r], cells);
 				newDataTableBuffer.addRowToTable(rowOut);
 		}
@@ -115,7 +115,7 @@ public class XlsControlTableFromCellRangeNodeModel extends NodeModel {
 		if (inData[0] != null)
 			newDataTable = XlsFormatterControlTableCreateTools.merge(
 					inData[0], newDataTable,
-					m_modeString.getStringValue().equals(Modes.OVERWRITE.toString()), exec, logger);
+					m_mode.getStringValue().equals(Modes.OVERWRITE.toString()), exec, logger);
 
 		return new BufferedDataTable[] { newDataTable };
 	}
@@ -129,10 +129,10 @@ public class XlsControlTableFromCellRangeNodeModel extends NodeModel {
 
 		CellRangeAddress range;
 		try {
-			range = AddressingTools.parseRange(m_cellRangeString.getStringValue().trim());
+			range = AddressingTools.parseRange(m_cellRange.getStringValue().trim());
 		}
 		catch (Exception e) {
-			throw new InvalidSettingsException("Invalid cell range " + m_cellRangeString.getStringValue().trim() + ". " + e.getMessage(), e);
+			throw new InvalidSettingsException("Invalid cell range " + m_cellRange.getStringValue().trim() + ". " + e.getMessage(), e);
 		}
 
 		if (inSpecs[0] == null)
@@ -154,9 +154,9 @@ public class XlsControlTableFromCellRangeNodeModel extends NodeModel {
 	 */
 	@Override
 	protected void saveSettingsTo(final NodeSettingsWO settings) {
-		m_cellRangeString.saveSettingsTo(settings);
-		m_tagString.saveSettingsTo(settings);
-		m_modeString.saveSettingsTo(settings);
+		m_cellRange.saveSettingsTo(settings);
+		m_tag.saveSettingsTo(settings);
+		m_mode.saveSettingsTo(settings);
 	}
 
 	/**
@@ -166,9 +166,9 @@ public class XlsControlTableFromCellRangeNodeModel extends NodeModel {
 	protected void loadValidatedSettingsFrom(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 
-		m_cellRangeString.loadSettingsFrom(settings);
-		m_tagString.loadSettingsFrom(settings);    
-		m_modeString.loadSettingsFrom(settings);
+		m_cellRange.loadSettingsFrom(settings);
+		m_tag.loadSettingsFrom(settings);    
+		m_mode.loadSettingsFrom(settings);
 	}
 
 	/**
@@ -178,9 +178,9 @@ public class XlsControlTableFromCellRangeNodeModel extends NodeModel {
 	protected void validateSettings(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 
-		m_cellRangeString.validateSettings(settings);
-		m_tagString.validateSettings(settings);
-		m_modeString.validateSettings(settings);
+		m_cellRange.validateSettings(settings);
+		m_tag.validateSettings(settings);
+		m_mode.validateSettings(settings);
 	}
 
 	/**

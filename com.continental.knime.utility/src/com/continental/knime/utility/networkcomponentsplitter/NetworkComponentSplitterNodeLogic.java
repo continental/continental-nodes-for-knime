@@ -40,6 +40,7 @@ import org.knime.core.data.sort.BufferedDataTableSorter;
 import org.knime.core.node.BufferedDataContainer;
 import org.knime.core.node.BufferedDataTable;
 import org.knime.core.node.ExecutionContext;
+import org.knime.core.node.ExecutionMonitor;
 import org.knime.core.node.NodeLogger;
 
 public class NetworkComponentSplitterNodeLogic {
@@ -48,11 +49,6 @@ public class NetworkComponentSplitterNodeLogic {
 			final String inputColumnName1, final String inputColumnName2, final boolean missingValueAsOwnNode,
 			final String outputNodeColumnName, final String outputClusterColumnName, 
 			final ExecutionContext exec, final int IN_PORT, final NodeLogger logger) throws Exception {
-		
-  	// Your custom variables:
-		HashMap<String, Integer> nodeToClusterMap = new HashMap<String, Integer>();
-		int nextFreeClusterId = 0;
-		HashSet<AbstractMap.SimpleEntry<Integer, Integer>> clusterConnections = new HashSet<AbstractMap.SimpleEntry<Integer, Integer>>();
 		
 		/*
 		 * Idea of this algorithm:
@@ -75,7 +71,10 @@ public class NetworkComponentSplitterNodeLogic {
 		 * numbering. Since the above logic has introduced these gaps, we need to re-assign ids.
 		 */
 		
-		logger.info("Current Status of Cluster Node: 0%");
+		HashMap<String, Integer> nodeToClusterMap = new HashMap<String, Integer>();
+		int nextFreeClusterId = Integer.MIN_VALUE;
+		HashSet<AbstractMap.SimpleEntry<Integer, Integer>> clusterConnections = new HashSet<AbstractMap.SimpleEntry<Integer, Integer>>();
+		ExecutionMonitor subExecMonitor;
 		
 		BufferedDataTable inputTable = inData[IN_PORT];
 		BufferedDataContainer outBuffer = exec.createDataContainer(
@@ -94,13 +93,15 @@ public class NetworkComponentSplitterNodeLogic {
 		if (colIndexNode2 == -1)
 			throw new InvalidAttributesException("Column " + inputColumnName2 + " not found.");
 		
-		// read in data table and fill HashMaps in this first pass right away
+		// read in data table and fill HashMaps in this first pass right away,
+		// i.e. part 1 of the algorithm description above
 		long currentRow = 0;
+		subExecMonitor = exec.createSubProgress(.5d);
 		for (DataRow row : inputTable) {
 			
-			exec.checkCanceled();
-			exec.setProgress(currentRow / rowCount * 0.5d,
-					"Read In Table: " + Math.round(currentRow/rowCount*100d) + "%");
+			subExecMonitor.checkCanceled();
+			subExecMonitor.setProgress((double)currentRow / rowCount,
+					"pre-process input table: " + Math.round(currentRow * 100d / rowCount) + "%");
 			
 			String key1 =
 					row.getCell(colIndexNode1).isMissing() || row.getCell(colIndexNode1).getType() != StringCell.TYPE ? null
@@ -135,6 +136,11 @@ public class NetworkComponentSplitterNodeLogic {
 			else { // both nodes of this edge have not been seen before
 				nodeToClusterMap.put(key1, nextFreeClusterId);
 				nodeToClusterMap.put(key2, nextFreeClusterId);
+				
+				// check whether Integer value space is exceeded:
+				if (nextFreeClusterId == Integer.MAX_VALUE)
+					throw new Exception("Too many cluster candidates found. This node's implementation can only handle up to 4,294,967,295 candidates.");
+				
 				nextFreeClusterId++;
 			}
 			
@@ -142,18 +148,19 @@ public class NetworkComponentSplitterNodeLogic {
 		}
   		
 		
-		// consolidate the information now that the entire table has been processed once
-		logger.info("Current Status of Cluster Node: 50%");
+		// consolidate the information now that the entire table has been processed once,
+		// i.e. part 2 of the algorithm description above
 		HashMap<Integer, Integer> smallestRelatedClusterMap = new HashMap<Integer, Integer>(); // per every previously assigned cluster, keep track of the smallest linked cluster currently known
 		HashMap<Integer, HashSet<Integer>> clusterGroupMap = new HashMap<Integer, HashSet<Integer>>(); // reverse look-up table (in above logic: which value maps to which keys)
 		
 		// initially fill new data structures
 		long progress = 0;
-		long total = nextFreeClusterId;  			
-		for (int i = 0; i < nextFreeClusterId; i++) {
-			exec.checkCanceled();
-			exec.setProgress((double) 0.5 + progress/total*0.075,
-					"Calculate ClusterIDs for Nodes " + Math.round((double) progress++/total*100*0.3/0.4) + "%");
+		double statusCalculationTotal = nextFreeClusterId + -1 * (double)Integer.MIN_VALUE;  	
+		subExecMonitor = exec.createSubProgress(.02d);
+		for (int i = Integer.MIN_VALUE; i < nextFreeClusterId; i++) {
+			subExecMonitor.checkCanceled();
+			subExecMonitor.setProgress(progress / statusCalculationTotal,
+					"prepare cluster ID assignment " + Math.round(progress++ * 100d / statusCalculationTotal) + "%");
 			
 			smallestRelatedClusterMap.put(i, i); // add self-reference for all clusters not appearing in a connection
 			clusterGroupMap.put(i, new HashSet<Integer>());
@@ -162,11 +169,12 @@ public class NetworkComponentSplitterNodeLogic {
 		
 		// iterate through the known connections between clusters
 		progress = 0;
-		total = clusterConnections.size();
+		statusCalculationTotal = clusterConnections.size();
+		subExecMonitor = exec.createSubProgress(.01d);
 		for (AbstractMap.SimpleEntry<Integer, Integer> pair : clusterConnections) {
-			exec.checkCanceled();
-			exec.setProgress((double) 0.575 + progress/total*0.025,
-					"Calculate ClusterIDs for Nodes " + Math.round((double) 75+progress++/total*100*0.1/0.4) + "%");
+			subExecMonitor.checkCanceled();
+			subExecMonitor.setProgress(progress / statusCalculationTotal,
+					"calculate cluster IDs for nodes " + Math.round(progress++ * 100d / statusCalculationTotal) + "%");
 			Integer pairSmaller = pair.getKey(); // by the above adding strategy, key is always smaller than value in these connections
 			Integer pairLarger = pair.getValue();
 			Integer valuePairS = smallestRelatedClusterMap.get(pairSmaller);
@@ -179,7 +187,7 @@ public class NetworkComponentSplitterNodeLogic {
 				
 				// use the "backward facing" map to determine which updates are needed in the "forward facing" map:
 				for (Integer i : clusterGroupMap.get(valueLarger)) {
-					exec.checkCanceled();
+					subExecMonitor.checkCanceled();
 					smallestRelatedClusterMap.put(i, valueSmaller);
 				}
 		
@@ -191,20 +199,29 @@ public class NetworkComponentSplitterNodeLogic {
 		clusterConnections = null;
 		clusterGroupMap = null;
 		
-		// re-label the clusters in order to be consecutive again
+		// re-label the clusters in order to be consecutive again,
+		// i.e. part 3 of the algorithm description above
 		HashMap<Integer, Integer> finalClusterIds = new HashMap<Integer, Integer>(); // intermediate cluster ids to final ids
-		nextFreeClusterId = 0;
+		nextFreeClusterId = 1;  // final cluster ID list shall be 1-based, not 0-based
 		Set<Integer> keys = smallestRelatedClusterMap.keySet();
 		
 		progress = 0;
-		total = keys.size();
+		statusCalculationTotal = keys.size();
+		subExecMonitor = exec.createSubProgress(.02d);
 		for (Integer key : keys) {
-			exec.checkCanceled();
-			exec.setProgress(0.6d + progress / total * 0.05,
-					"Generate final ClusterIDs: " + Math.round((double) progress++ / total * 100 * 0.1 / 0.4) + "%");
+			subExecMonitor.checkCanceled();
+			subExecMonitor.setProgress(progress / statusCalculationTotal,
+					"generate final cluster IDs: " + Math.round(progress++ * 100d / statusCalculationTotal) + "%");
 			Integer right = smallestRelatedClusterMap.get(key);
-			if (!finalClusterIds.containsKey(right))
+			if (!finalClusterIds.containsKey(right)) {
+				
+				// check whether Integer value space is exceeded:
+				if (nextFreeClusterId == Integer.MAX_VALUE)
+					throw new Exception("Too many resulting clusters found. This node's implementation can only handle up to 2,147,483,647 final clusters.");
+				
 				finalClusterIds.put(right, nextFreeClusterId++);
+			}
+				
 			smallestRelatedClusterMap.put(key, finalClusterIds.get(right)); // directly assign the final ID
 		}
 		finalClusterIds = null;
@@ -212,30 +229,29 @@ public class NetworkComponentSplitterNodeLogic {
 		
 		// assign nodes to clusters, i.e. create unsorted output table
 		long i = 0;
-		total = nodeToClusterMap.size();
+		statusCalculationTotal = nodeToClusterMap.size();
+		subExecMonitor = exec.createSubProgress(.1d);
 		for (String key : nodeToClusterMap.keySet()) {
-			exec.checkCanceled();
-			exec.setProgress(0.8d + i / total * 0.1,
-					"Write unsorted output Table: " + (i / total * 100d) + "%");
+			subExecMonitor.checkCanceled();
+			subExecMonitor.setProgress((double)i / statusCalculationTotal,
+					"buffer unsorted output table: " + Math.round(i * 100d / statusCalculationTotal) + "%");
 			
 			DataCell[] cells = new DataCell[2];
 			cells[0] = key == null ? new MissingCell("") : new StringCell(key);
-			cells[1] = new IntCell(smallestRelatedClusterMap.get(nodeToClusterMap.get(key)) + 1); // + 1 to have a 1-based instead of 0-based cluster id list
+			cells[1] = new IntCell(smallestRelatedClusterMap.get(nodeToClusterMap.get(key)));
 			DataRow rowOut = new DefaultRow(RowKey.createRowKey(i), cells);
 			outBuffer.addRowToTable(rowOut);
 			i++;
 		}
   	
   	outBuffer.close();
-  	exec.setProgress(0.90d, "Sort Output Table");
-  	
   	
   	// sort output table
   	BufferedDataTable[] outTables = new BufferedDataTable[1];
   	outTables[0] = outBuffer.getTable();
   	Collection<String> sortColumnOrder = Arrays.asList(outputClusterColumnName, outputNodeColumnName);
   	outTables[0] = (new BufferedDataTableSorter(outTables[0], sortColumnOrder, new boolean[] {true, true}, true))
-  			.sort(exec);
+  			.sort(exec.createSubExecutionContext(.35d));
   	
   	// assign row keys
   	i = 0;
@@ -247,7 +263,6 @@ public class NetworkComponentSplitterNodeLogic {
   	}
   	outBuffer.close();
   	outTables[0] = outBuffer.getTable();
-  	exec.setProgress(100d);
   	return outTables;
 	}
 }

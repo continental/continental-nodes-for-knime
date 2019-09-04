@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./hyperlinker.png" type="Manipulator" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+    <name>XLS Hyperlinker</name>
+    
+   	<shortDescription>
+       The XLS Hyperlinker adds hyperlinks to cells.
+   	</shortDescription>
+    
+    <fullDescription>
+        <intro>
+       	The <i>XLS Hyperlinker</i> adds hyperlinks to cells.<p />
+       	Hyperlinks need to be provided in URL encoded form, e.g. space characters being replaced by <i>%20</i> and usage of slashes instead of backslashes in the <i>file:/</i> protocol. Encoding or protocol errors can only partly be checked within this node and will most likely cause the respective links to fail in your spreadsheet application.<p />
+       	The maximum number of hyperlinks allowed in a single workbook is 20,000.<p />
+       	This node does not change the text format of the affected cells. A desired formatting (such as blue and underlined text) can be achieved via the <i>XLS Font Formatter</i> node.<p />
+       	This node defines a formatting instruction only which needs to be written to an xlsx file via the <i>XLS Formatter (apply)</i> node subsequently.
+    	</intro>
+
+    </fullDescription>
+    
+    <ports>
+        <inPort index="0" name="Control Table">XLS Control Table holding the hyperlinks for specific cells.</inPort>
+		<inPort index="1" name="Optional XLS Formatter">The XLS Formatter input port potentially holding previous formatting instructions that the instructions of this node shall be added to.</inPort>
+		<outPort index="0" name="XLS Formatter">The XLS Formatter output port holding the collected formatting instructions including the added formatting information from this node.</outPort>
+    </ports>  
+
+</knimeNode>

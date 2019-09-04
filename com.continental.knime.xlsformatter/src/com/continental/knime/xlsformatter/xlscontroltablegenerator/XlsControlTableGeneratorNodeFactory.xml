@@ -3,15 +3,19 @@
     <name>XLS Control Table Generator</name>
     
     <shortDescription>
-       The XLS Control Table Generator node takes an input data table and transforms it to an XLS Control Table, meaning it exchanges the column names to A, B, C, ... and the row IDs to 1, 2, 3, ... just like they would appear when opening the xlsx file in a spreadsheet application.
-       Optionally you can unpivot the table as well to make use of Rule Engine nodes later for flexible and dynamic XLS formatting workflows. 
+       The XLS Control Table Generator node takes an input data table and transforms it to an XLS Control Table, meaning it exchanges the column names to A, B, C, ... and the row IDs to 1, 2, 3, ... just like they would appear when opening the xlsx file in a spreadsheet application. 
    	</shortDescription>
     
     <fullDescription>
         <intro>
 			The XLS Control Table Generator node takes an input data table and transforms it to an XLS Control Table, meaning it exchanges the column names to A, B, C, ... and the row IDs to 1, 2, 3, ... just like they would appear when opening the xlsx file in a spreadsheet application.<p />
-       Optionally you can unpivot the table as well to make use of Rule Engine nodes later for flexible and dynamic XLS formatting workflows.
+       Optionally you can unpivot the table as well to make use of Rule Engine nodes later for flexible and dynamic XLS formatting workflows. A second operation type allows to pivot this special table layout back to the final desired XLS Control Table structure.
     	</intro>
+    	
+    	<tab name="Operation Type (automatically set based on the provided input table)">
+            <option name="from arbitrary input table to XLS Control Table (wide or long/unpivoted)">If no special input table is detected, this mode of operation will exchange the input table's column and row headers to XLS-like style.</option>
+            <option name="from long/unpivoted layout to wide XLS Control Table">If the output of a previous unpivot operation by this node (see below) is detected as input table specification (no additional columns are allowed in this case), this mode pivots them back to a valid (wide) XLS Control Table.<br />In case you expected your input table to be of this kind, but the standard operation type was detected, please activate the debug logging view to learn about the cause of this decision.</option>
+  		</tab>
     	
 		<tab name="Shift Rows Option">
             <option name="use first row as column header">Copy the original table's column header to a new first row. This is typically used in line with the corresponding setting in KNIME's Excel Writer node.</option>
@@ -19,13 +23,23 @@
         
         <tab name="Result Table Structure Options">
             <option name="unpivot result table (for easier post-processing and re-pivoting)">Unpivot your input table, meaning that each input table cell will become an own output table row. On this basis, own rules can be defined, e.g. to define tags required for many of the XLS Formatting nodes.</option>
-            <option name="add more header columns">Add column headers like the column number, original column names, original row ID, and padded XLS column name. Padding is useful as wide tables will otherwise be difficult to correctly sort, as e.g. Pivoting node's lexicographical sorting option would yield AA, Y, Z order instead of Y, Z, AA (solved via 00Y, 00Z, 0AA).</option>
+            <option name="add more header columns">Add column headers like the column number, original column names, original row ID, and padded XLS column name. Padding is useful as wide tables might otherwise be difficult to correctly sort (e.g. AA, Y, Z order instead of Y, Z, AA -> solved via 00Y, 00Z, 0AA).</option>
         </tab>        
+
+			<tab name="Contradiction Resolution Strategy at Operation Type 'long to wide'">
+            <option name="fail">If two or more columns hold contradicting target cell addressing information, let this node fail with an exception.</option>
+            <option name="use 'Cell'">If two or more columns hold contradicting target cell addressing information, ignore all columns but 'Cell'.</option>
+            <option name="use 'Column' and 'Row'">If two or more columns hold contradicting target cell addressing information, ignore all columns but 'Column' and 'Row'.</option>
+            <option name="use 'Column (comparable)' and 'Row'">If two or more columns hold contradicting target cell addressing information, ignore all columns but 'Column (comparable)' and 'Row'.</option>
+            <option name="use 'Column (number)' and 'Row'">If two or more columns hold contradicting target cell addressing information, ignore all columns but 'Column (number)' and 'Row'.</option>
+  		</tab>
+
+
 
     </fullDescription>
     
     <ports>
-        <inPort index="0" name="Data Table">Data table, typically holding the raw data of your xlsx sheet.</inPort>
+        <inPort index="0" name="Data Table">Data table, typically holding the raw data of your xlsx sheet. Alternatively, the output of a previous instance of this node (in 'unpivot' mode) with the purpose to be pivoted back to wide table layout.</inPort>
         <outPort index="0" name="Control Table">The generated XLS Control Table (or its unpivoted version).</outPort>
     </ports>
     

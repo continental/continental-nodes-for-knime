@@ -46,8 +46,8 @@ import com.continental.knime.xlsformatter.rowcolumnsizer.XlsRowColumnSizerNodeMo
 
 public class XlsRowColumnSizerNodeDialog extends DefaultNodeSettingsPane {
 
-	private static final String[] CONTROLTABLESTYLE_ARRAY = XlsFormatterUiOptions.getDropdownArrayFromEnum(ControlTableStyle.values());
-	private static final String[] DIMENSIONTOSIZE_ARRAY = XlsFormatterUiOptions.getDropdownArrayFromEnum(DimensionToSize.values());
+	private static final String[] CONTROL_TABLE_STYLE_ARRAY = XlsFormatterUiOptions.getDropdownArrayFromEnum(ControlTableStyle.values());
+	private static final String[] DIMENSION_TO_SIZE_ARRAY = XlsFormatterUiOptions.getDropdownArrayFromEnum(DimensionToSize.values());
 
 	protected boolean hasDoubleControlTableInput = false; // will be set with last spec info in overwritten loadAdditionalSettingsFrom method
 	
@@ -57,15 +57,17 @@ public class XlsRowColumnSizerNodeDialog extends DefaultNodeSettingsPane {
 	SettingsModelDouble size;
 	SettingsModelBoolean autoSize;
 	
+	ChangeListener changeListener = new RowColumnSizerDialogChangeListener();
+	
 	protected XlsRowColumnSizerNodeDialog() {
 		super();
 
-		this.createNewGroup(XlsFormatterUiOptions.UI_LABEL_CONTROLTABLESTYLE_GROUPTITLE + " (automatically set based on the provided control table)");
+		this.createNewGroup(XlsFormatterUiOptions.UI_LABEL_CONTROL_TABLE_STYLE_GROUPTITLE + " (automatically set based on the provided control table)");
 		setHorizontalPlacement(true);
-		controlTableStyle = new SettingsModelString(XlsRowColumnSizerNodeModel.CFGKEY_CONTROLTABLESTYLE,
+		controlTableStyle = new SettingsModelString(XlsRowColumnSizerNodeModel.CFGKEY_CONTROL_TABLE_STYLE,
 				hasDoubleControlTableInput ? ControlTableStyle.DIRECT.toString() : ControlTableStyle.STANDARD.toString());
 		DialogComponentButtonGroup controlTableStyleComponent = new DialogComponentButtonGroup( //ControlTableStyle
-				controlTableStyle, "", false, CONTROLTABLESTYLE_ARRAY, CONTROLTABLESTYLE_ARRAY);
+				controlTableStyle, "", false, CONTROL_TABLE_STYLE_ARRAY, CONTROL_TABLE_STYLE_ARRAY);
 		controlTableStyleComponent.setToolTipText("The control table style is set automatically depending on the connected control table. Connect either a standard, tag-based control table or one containing the direct row or column sizes in Integer-typed columns.");
 		this.addDialogComponent(controlTableStyleComponent);
 		setHorizontalPlacement(false);   
@@ -74,14 +76,14 @@ public class XlsRowColumnSizerNodeDialog extends DefaultNodeSettingsPane {
 		this.createNewGroup("Row and Column Size");
 		dimensionToSize = new SettingsModelString(XlsRowColumnSizerNodeModel.CFGKEY_ROW_COLUMN_SIZE, XlsRowColumnSizerNodeModel.DEFAULT_ROW_COLUMN_SIZE);
 		DialogComponentStringSelection rowColumnSizeComponent = new DialogComponentStringSelection( //ControlTableStyle
-				dimensionToSize, "change", DIMENSIONTOSIZE_ARRAY);
+				dimensionToSize, "change", DIMENSION_TO_SIZE_ARRAY);
 		rowColumnSizeComponent.setToolTipText("Select the function you want to apply in your Xls Sheet.");
 		this.addDialogComponent(rowColumnSizeComponent);
 
 		this.createNewGroup("Tag and Size");
 		setHorizontalPlacement(true);
-		tag = new SettingsModelString(XlsRowColumnSizerNodeModel.CFGKEY_TAGSTRING,XlsRowColumnSizerNodeModel.DEFAULT_TAGSTRING);
-		DialogComponentString tagstringComponent = new DialogComponentString(tag, XlsFormatterUiOptions.UI_LABEL_SINGLE_TAG); 
+		tag = new SettingsModelString(XlsRowColumnSizerNodeModel.CFGKEY_TAG,XlsRowColumnSizerNodeModel.DEFAULT_TAG);
+		DialogComponentString tagstringComponent = new DialogComponentString(tag, XlsFormatterUiOptions.UI_LABEL_SINGLE_TAG, true, 10); 
 		tagstringComponent.setToolTipText(XlsFormatterUiOptions.UI_TOOLTIP_SINGLE_TAG);
 		this.addDialogComponent(tagstringComponent);
 		
@@ -94,33 +96,22 @@ public class XlsRowColumnSizerNodeDialog extends DefaultNodeSettingsPane {
 		autoSizeComponent.setToolTipText("Auto-size functionality is only available for columns.");
 		this.addDialogComponent(autoSizeComponent);
 
-		size.addChangeListener(new ChangeListener() {
-			public void stateChanged(final ChangeEvent e) {
-				if (size.isEnabled() && size.getDoubleValue() <= 0)
-					size.setDoubleValue(0.1);
-			}
-		});
-		
-		dimensionToSize.addChangeListener(new ChangeListener(){
-			public void stateChanged(final ChangeEvent e) {
-				if (dimensionToSize.isEnabled() && tag.isEnabled()) {
-					boolean action = dimensionToSize.getStringValue().equals(DimensionToSize.COLUMN.toString());					
-					size.setEnabled(true);
-					autoSize.setEnabled(action);
-				}
-			}
-		});
-		
-		autoSize.addChangeListener(new ChangeListener(){
-			public void stateChanged(final ChangeEvent e) {
-				if(autoSize.isEnabled()) {
-					boolean action = !controlTableStyle.getStringValue().equals(XlsFormatterUiOptions.UI_LABEL_CONTROLTABLESTYLE_STANDARD) ||
-							!dimensionToSize.getStringValue().equals(DimensionToSize.COLUMN.toString()) ||
-							!autoSize.getBooleanValue();
-					size.setEnabled(action);
-				}
-			}
-		});
+		size.addChangeListener(changeListener);
+		dimensionToSize.addChangeListener(changeListener);
+		autoSize.addChangeListener(changeListener);
+	}
+	
+	class RowColumnSizerDialogChangeListener implements ChangeListener {
+		public void stateChanged(final ChangeEvent e) {
+			
+			tag.setEnabled(!hasDoubleControlTableInput);
+	  	autoSize.setEnabled(!hasDoubleControlTableInput && dimensionToSize.getStringValue().equals(DimensionToSize.COLUMN.toString()));
+	  	size.setEnabled(!hasDoubleControlTableInput &&
+	  			(dimensionToSize.getStringValue().equals(DimensionToSize.ROW.toString()) || !autoSize.getBooleanValue())); 
+			
+			if (size.isEnabled() && size.getDoubleValue() <= 0)
+				size.setDoubleValue(0.1);
+		}
 	}
 	
 	@Override
@@ -137,9 +128,8 @@ public class XlsRowColumnSizerNodeDialog extends DefaultNodeSettingsPane {
   	
   	controlTableStyle.setStringValue(hasDoubleControlTableInput ? ControlTableStyle.DIRECT.toString() : ControlTableStyle.STANDARD.toString());
   	controlTableStyle.setEnabled(false);
-  	tag.setEnabled(!hasDoubleControlTableInput);
-  	autoSize.setEnabled(!hasDoubleControlTableInput);
-  	size.setEnabled(!hasDoubleControlTableInput && !autoSize.getBooleanValue());  	
+  	
+  	changeListener.stateChanged(null);
 	}
 	
 	@Override

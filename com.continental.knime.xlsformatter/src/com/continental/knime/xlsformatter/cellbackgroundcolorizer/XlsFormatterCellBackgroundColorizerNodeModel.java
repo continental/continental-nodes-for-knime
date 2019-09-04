@@ -21,8 +21,9 @@ package com.continental.knime.xlsformatter.cellbackgroundcolorizer;
 import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 import org.apache.poi.ss.util.CellAddress;
 import org.knime.core.data.DataTableSpec;
@@ -41,7 +42,6 @@ import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.port.PortType;
 
-import com.continental.knime.xlsformatter.apply.XlsFormatterApplyLogic;
 import com.continental.knime.xlsformatter.commons.AddressingTools;
 import com.continental.knime.xlsformatter.commons.ColorTools;
 import com.continental.knime.xlsformatter.commons.TagBasedXlsCellFormatterNodeModel;
@@ -50,6 +50,8 @@ import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableAnalys
 import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableValidator;
 import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableValidator.ControlTableType;
 import com.continental.knime.xlsformatter.commons.XlsFormatterUiOptions;
+import com.continental.knime.xlsformatter.commons.XlsFormattingStateValidator;
+import com.continental.knime.xlsformatter.commons.XlsFormattingStateValidator.ValidationModes;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterState;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterState.FillPattern;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterStateSpec;
@@ -62,47 +64,47 @@ public class XlsFormatterCellBackgroundColorizerNodeModel extends TagBasedXlsCel
 			.getLogger(XlsFormatterCellBackgroundColorizerNodeModel.class);
 
 	//Control Table Selection Radion Button
-	static final String CFGKEY_CONTROLTABLESTYLE = XlsFormatterUiOptions.UI_LABEL_CONTROLTABLESTYLE_KEY;
-	static final String OPTION_CONTROLTABLESTYLE_STANDARD = XlsFormatterUiOptions.UI_LABEL_CONTROLTABLESTYLE_STANDARD;
+	static final String CFGKEY_CONTROLTABLESTYLE = XlsFormatterUiOptions.UI_LABEL_CONTROL_TABLE_STYLE_KEY;
+	static final String OPTION_CONTROLTABLESTYLE_STANDARD = XlsFormatterUiOptions.UI_LABEL_CONTROL_TABLE_STYLE_STANDARD;
 	static final String OPTION_CONTROLTABLESTYLE_DIRECT = "direct color codes in RGB format";
 	static final String DEFAULT_CONTROLTABLESTYLE = OPTION_CONTROLTABLESTYLE_STANDARD;
-	final SettingsModelString m_controltablestyle =
+	final SettingsModelString m_controlTableStyle =
 			new SettingsModelString(CFGKEY_CONTROLTABLESTYLE, DEFAULT_CONTROLTABLESTYLE);   
 
 	//Input tag string
 	static final String CFGKEY_TAGSTRING = "Tag";
 	static final String DEFAULT_TAGSTRING = "header";
-	final SettingsModelString m_tagstring =
+	final SettingsModelString m_tag =
 			new SettingsModelString(CFGKEY_TAGSTRING, DEFAULT_TAGSTRING);
 
 	//Background color selection
 	static final String CFGKEY_BACKGROUND_COLOR_SELECTION = "BackGroundColorSelection";
 	static final boolean DEFAULT_BACKGROUND_COLOR_SELECTION = true;
-	final SettingsModelBoolean m_backgroundcolorselection =
+	final SettingsModelBoolean m_changeBackgroundColor =
 			new SettingsModelBoolean(CFGKEY_BACKGROUND_COLOR_SELECTION, DEFAULT_BACKGROUND_COLOR_SELECTION);
 
 	//Background color field
 	static final String CFGKEY_BACKGROUNDCOLOR = "BackGroundColor";
 	static final Color DEFAULT_BACKGROUNDCOLOR = new Color(255, 255, 0);
-	final SettingsModelColor m_backgroundcolor =
+	final SettingsModelColor m_backgroundColor =
 			new SettingsModelColor(CFGKEY_BACKGROUNDCOLOR, DEFAULT_BACKGROUNDCOLOR);
 
 	//Background pattern selection
 	static final String CFGKEY_BACKGROUND_PATTERN_SELECTION = "BackGroundPatternSelection";
 	static final String DEFAULT_BACKGROUND_PATTERN_SELECTION = XlsFormatterState.FillPattern.UNMODIFIED.toString().toLowerCase();
-	final SettingsModelString m_backgroundpatternselection =
+	final SettingsModelString m_backgroundPattern =
 			new SettingsModelString(CFGKEY_BACKGROUND_PATTERN_SELECTION, DEFAULT_BACKGROUND_PATTERN_SELECTION);
 
 	//Background pattern fill dropdwon
 	static final String CFGKEY_BACKGROUND_PATTERN_COLOR_SELECTION = "BackGroundPatternColorSelection";
 	static final boolean DEFAULT_BACKGROUND_PATTERN_COLOR_SELECTION = false;
-	final SettingsModelBoolean m_backgroundpatterncolorselection =
+	final SettingsModelBoolean m_changeBackgroundPatternColor =
 			new SettingsModelBoolean(CFGKEY_BACKGROUND_PATTERN_COLOR_SELECTION, DEFAULT_BACKGROUND_PATTERN_COLOR_SELECTION);
 
 	//Background pattern color
 	static final String CFGKEY_BACKGROUND_PATTERN_COLOR = "BackGroundPatternColor";
 	static final Color DEFAULT_BACKGROUND_PATTERN_COLOR = new Color(0, 0, 0);
-	final SettingsModelColor m_backgroundpatterncolor =
+	final SettingsModelColor m_backgroundPatternColor =
 			new SettingsModelColor(CFGKEY_BACKGROUND_PATTERN_COLOR, DEFAULT_BACKGROUND_PATTERN_COLOR);
 
 
@@ -132,50 +134,79 @@ public class XlsFormatterCellBackgroundColorizerNodeModel extends TagBasedXlsCel
 			final ExecutionContext exec) throws Exception {
 
 		if (!XlsFormatterControlTableValidator.isControlTable((BufferedDataTable)inObjects[0],
-				m_controltablestyle.getStringValue().equals(OPTION_CONTROLTABLESTYLE_STANDARD) ? ControlTableType.STRING : ControlTableType.STRING_WITHOUT_CONTENT_CHECK, exec, logger))
+				m_controlTableStyle.getStringValue().equals(OPTION_CONTROLTABLESTYLE_STANDARD) ? ControlTableType.STRING : ControlTableType.STRING_WITHOUT_CONTENT_CHECK, exec, logger))
 			throw new IllegalArgumentException("The provided input table is not a valid XLS control table. See log for details.");
 		
 
 		XlsFormatterState xlsf = XlsFormatterState.getDeepClone(inObjects[1]);
+		XlsFormatterState.SheetState xlsfs = xlsf.getCurrentSheetStateForModification();
+		WarningMessageContainer warningMessageContainer = new WarningMessageContainer();
 
-		if (m_controltablestyle.getStringValue().equals(OPTION_CONTROLTABLESTYLE_STANDARD)) {
+		// differentiate two modes of operation: standard (i.e. via a tag) or direct RGB values
+		if (m_controlTableStyle.getStringValue().equals(OPTION_CONTROLTABLESTYLE_STANDARD)) {
 			List<CellAddress> targetCells =
-					XlsFormatterControlTableAnalysisTools.getCellsMatchingTag((BufferedDataTable)inObjects[0], m_tagstring.getStringValue().trim(), exec, logger);
-			warnOnNoMatchingTags(targetCells, m_tagstring.getStringValue().trim());
+					XlsFormatterControlTableAnalysisTools.getCellsMatchingTag((BufferedDataTable)inObjects[0], m_tag.getStringValue().trim(), exec, logger);
+			warnOnNoMatchingTags(targetCells, m_tag.getStringValue().trim(), warningMessageContainer);
+			
+			// check for a partly overlap of these target cells with a previously merged range and warn
+			String mergeOverlapRanges = XlsFormatterControlTableAnalysisTools.getOverlappingRanges(targetCells, xlsfs.mergeRanges, exec, logger);
+			if (mergeOverlapRanges != null)
+				warningMessageContainer.addMessage("Modification on parts of previously merged range(s) (" + mergeOverlapRanges + ") will have no effect.");
 
+			// modify each target cell at a time
 			for (CellAddress cell : targetCells) {
-				XlsFormatterState.CellState cellState = AddressingTools.safelyGetCellInMap(xlsf.cells, cell);
+				XlsFormatterState.CellState cellState = AddressingTools.safelyGetCellInMap(xlsfs.cells, cell);
 
-				FillPattern fillPatternSelection = FillPattern.valueOf(m_backgroundpatternselection.getStringValue().toUpperCase());
+				FillPattern fillPatternSelection = FillPattern.valueOf(m_backgroundPattern.getStringValue().toUpperCase());
 
-				if (m_backgroundcolorselection.getBooleanValue()) {
-					cellState.backgroundColor = m_backgroundcolor.getColorValue();
+				if (m_changeBackgroundColor.getBooleanValue()) {
+					cellState.backgroundColor = m_backgroundColor.getColorValue();
 					if (
 							(cellState.fillPattern == FillPattern.UNMODIFIED || cellState.fillPattern == FillPattern.NONE) &&
 							fillPatternSelection == FillPattern.UNMODIFIED)
 						cellState.fillPattern = FillPattern.SOLID_BACKGROUND_COLOR;
 				}
 
-				if (fillPatternSelection != FillPattern.UNMODIFIED)
+				if (fillPatternSelection != FillPattern.UNMODIFIED) {
 					cellState.fillPattern = fillPatternSelection;
-				if (m_backgroundpatterncolorselection.getBooleanValue())
-					cellState.fillForegroundColor = m_backgroundpatterncolor.getColorValue();
+					if (m_changeBackgroundPatternColor.getBooleanValue()) // since v0.8.1: allow pattern fill color changes only for a change of pattern (not for pattern unmodified)
+						cellState.fillForegroundColor = m_backgroundPatternColor.getColorValue();
+				}
 			}
 		}
 		else { // option direct RGB values in control table instead of tags
-			Map<CellAddress, String> cellContentMap =
-					XlsFormatterControlTableAnalysisTools.getCellsWithStringValues((BufferedDataTable)inObjects[0], exec, logger);
+			boolean checkPartialOverlapWithMergeRanges = xlsfs.mergeRanges != null && xlsfs.mergeRanges.size() != 0;
+			XlsFormatterControlTableAnalysisTools.CellStringMaps cellValueMaps =
+					XlsFormatterControlTableAnalysisTools.getCellStringMaps((BufferedDataTable)inObjects[0], checkPartialOverlapWithMergeRanges, exec, logger);
 
-			for (CellAddress cell : cellContentMap.keySet()) {
+			// check for a partly overlap of these target cells with a previously merged range and warn
+			if (checkPartialOverlapWithMergeRanges) {
+				boolean showWarning = false;
+				Set<String> warnedMergeRanges = new HashSet<String>(); // keep track of the merge ranges that was already warned about on the log to avoid duplicate warnings 
+				for (String distinctValue : cellValueMaps.stringValueToCellAddressesMap.keySet()) {
+					List<CellAddress> targetCells = cellValueMaps.stringValueToCellAddressesMap.get(distinctValue);
+					String overlap = XlsFormatterControlTableAnalysisTools.getOverlappingRanges(targetCells, xlsfs.mergeRanges, exec, logger);
+					if (overlap != null && !warnedMergeRanges.contains(overlap)) {
+						logger.warn("Formatting of parts of previously merged range(s) will have no effect: Merge range " + overlap + " changed partly " + targetCells.toString() + " to " + distinctValue + ".");
+						warnedMergeRanges.add(overlap);
+						showWarning = true;
+					}
+				}
+				if (showWarning)
+					warningMessageContainer.addMessage("Formatting of parts of previously merged range(s) will have no effect. See log for details.");
+			}
+			
+			
+			for (CellAddress cell : cellValueMaps.cellAddressToStringValueMap.keySet()) {
 				XlsFormatterState.CellState cellState;
-				if (xlsf.cells.containsKey(cell))
-					cellState = xlsf.cells.get(cell);
+				if (xlsfs.cells.containsKey(cell))
+					cellState = xlsfs.cells.get(cell);
 				else {
 					cellState = new XlsFormatterState.CellState();
-					xlsf.cells.put(cell, cellState);
+					xlsfs.cells.put(cell, cellState);
 				}
 
-				String value = cellContentMap.get(cell);
+				String value = cellValueMaps.cellAddressToStringValueMap.get(cell);
 				if (!value.trim().equals("")) {
 					cellState.backgroundColor = ColorTools.anyColorCodeToXlsfColor(value);
 					cellState.fillPattern = FillPattern.SOLID_BACKGROUND_COLOR;
@@ -183,8 +214,7 @@ public class XlsFormatterCellBackgroundColorizerNodeModel extends TagBasedXlsCel
 			}
 		}
 
-		WarningMessageContainer warningMessageContainer = new WarningMessageContainer(); 
-		XlsFormatterApplyLogic.checkDerivedStyleComplexity(xlsf, warningMessageContainer, exec, logger);
+		XlsFormattingStateValidator.validateState(xlsf, ValidationModes.STYLES, warningMessageContainer, exec, logger);
 		if (warningMessageContainer.hasMessage())
 			setWarningMessage(warningMessageContainer.getMessage());
 
@@ -197,9 +227,6 @@ public class XlsFormatterCellBackgroundColorizerNodeModel extends TagBasedXlsCel
 
 		if (!XlsFormatterControlTableValidator.isControlTableSpec((DataTableSpec)inSpecs[0], logger))
 			throw new InvalidSettingsException("The configured input table header is not that of a valid XLS Formatting control table. See log for details.");
-
-		if (inSpecs[1] != null && ((XlsFormatterStateSpec)inSpecs[1]).getContainsMergeInstruction() == true)
-			throw new InvalidSettingsException("No futher XLS Formatting nodes allowed after Cell Merger.");
 
 		return new PortObjectSpec[] { inSpecs[1] == null ? XlsFormatterStateSpec.getEmptySpec() : ((XlsFormatterStateSpec)inSpecs[1]).getCopy() };
 	}
@@ -217,16 +244,16 @@ public class XlsFormatterCellBackgroundColorizerNodeModel extends TagBasedXlsCel
 	@Override
 	protected void saveSettingsTo(final NodeSettingsWO settings) {
 
-		m_backgroundcolor.setEnabled(true);
-		m_backgroundpatterncolor.setEnabled(false);    	
+		m_backgroundColor.setEnabled(true);
+		m_backgroundPatternColor.setEnabled(false);    	
 
-		m_controltablestyle.saveSettingsTo(settings);
-		m_tagstring.saveSettingsTo(settings);
-		m_backgroundcolor.saveSettingsTo(settings);
-		m_backgroundpatterncolorselection.saveSettingsTo(settings);
-		m_backgroundpatterncolor.saveSettingsTo(settings);
-		m_backgroundpatternselection.saveSettingsTo(settings);
-		m_backgroundcolorselection.saveSettingsTo(settings);
+		m_controlTableStyle.saveSettingsTo(settings);
+		m_tag.saveSettingsTo(settings);
+		m_backgroundColor.saveSettingsTo(settings);
+		m_changeBackgroundPatternColor.saveSettingsTo(settings);
+		m_backgroundPatternColor.saveSettingsTo(settings);
+		m_backgroundPattern.saveSettingsTo(settings);
+		m_changeBackgroundColor.saveSettingsTo(settings);
 
 	}
 
@@ -237,13 +264,13 @@ public class XlsFormatterCellBackgroundColorizerNodeModel extends TagBasedXlsCel
 	protected void loadValidatedSettingsFrom(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 
-		m_controltablestyle.loadSettingsFrom(settings);
-		m_tagstring.loadSettingsFrom(settings);
-		m_backgroundcolor.loadSettingsFrom(settings);
-		m_backgroundpatterncolorselection.loadSettingsFrom(settings);
-		m_backgroundpatterncolor.loadSettingsFrom(settings);
-		m_backgroundpatternselection.loadSettingsFrom(settings);
-		m_backgroundcolorselection.loadSettingsFrom(settings);
+		m_controlTableStyle.loadSettingsFrom(settings);
+		m_tag.loadSettingsFrom(settings);
+		m_backgroundColor.loadSettingsFrom(settings);
+		m_changeBackgroundPatternColor.loadSettingsFrom(settings);
+		m_backgroundPatternColor.loadSettingsFrom(settings);
+		m_backgroundPattern.loadSettingsFrom(settings);
+		m_changeBackgroundColor.loadSettingsFrom(settings);
 
 	}
 
@@ -254,13 +281,13 @@ public class XlsFormatterCellBackgroundColorizerNodeModel extends TagBasedXlsCel
 	protected void validateSettings(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 
-		m_controltablestyle.validateSettings(settings);
-		m_tagstring.validateSettings(settings);
-		m_backgroundcolor.validateSettings(settings);
-		m_backgroundpatterncolorselection.validateSettings(settings);
-		m_backgroundpatterncolor.validateSettings(settings);
-		m_backgroundpatternselection.validateSettings(settings);
-		m_backgroundcolorselection.validateSettings(settings);
+		m_controlTableStyle.validateSettings(settings);
+		m_tag.validateSettings(settings);
+		m_backgroundColor.validateSettings(settings);
+		m_changeBackgroundPatternColor.validateSettings(settings);
+		m_backgroundPatternColor.validateSettings(settings);
+		m_backgroundPattern.validateSettings(settings);
+		m_changeBackgroundColor.validateSettings(settings);
 
 
 	}

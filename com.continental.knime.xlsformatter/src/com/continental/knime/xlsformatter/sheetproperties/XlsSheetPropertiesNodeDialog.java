@@ -32,16 +32,16 @@ public class XlsSheetPropertiesNodeDialog extends DefaultNodeSettingsPane {
 
 	private static String[] functionOptions = XlsFormatterUiOptions.getDropdownArrayFromEnum(XlsSheetPropertiesNodeModel.FunctionOptions.values());
 
-	SettingsModelString tagstring;
+	SettingsModelString tag;
 	
 	protected XlsSheetPropertiesNodeDialog() {
 		super();
 
 		this.createNewGroup("Tag Selection");
-		tagstring = new SettingsModelString(XlsSheetPropertiesNodeModel.CFGKEY_TAG, XlsSheetPropertiesNodeModel.DEFAULT_TAG);
-		DialogComponentString tagstringComponent = new DialogComponentString(tagstring, XlsFormatterUiOptions.UI_LABEL_SINGLE_TAG); 
-		tagstringComponent.setToolTipText(XlsFormatterUiOptions.UI_TOOLTIP_SINGLE_TAG);
-		this.addDialogComponent(tagstringComponent);
+		tag = new SettingsModelString(XlsSheetPropertiesNodeModel.CFGKEY_TAG, XlsSheetPropertiesNodeModel.DEFAULT_TAG);
+		DialogComponentString tagComponent = new DialogComponentString(tag, XlsFormatterUiOptions.UI_LABEL_SINGLE_TAG, true, 10); 
+		tagComponent.setToolTipText(XlsFormatterUiOptions.UI_TOOLTIP_SINGLE_TAG);
+		this.addDialogComponent(tagComponent);
 
 		
 		this.createNewGroup("Sheet Propoerties");
@@ -55,6 +55,6 @@ public class XlsSheetPropertiesNodeDialog extends DefaultNodeSettingsPane {
 	@Override
 	public void saveAdditionalSettingsTo(NodeSettingsWO settings) throws InvalidSettingsException {
 		super.saveAdditionalSettingsTo(settings);
-		UiValidation.validateTagField(tagstring);
+		UiValidation.validateTagField(tag);
 	}
 }

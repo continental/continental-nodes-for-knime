@@ -22,7 +22,9 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import org.knime.core.node.InvalidSettingsException;
+import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
+import org.knime.core.node.NotConfigurableException;
 import org.knime.core.node.defaultnodesettings.DefaultNodeSettingsPane;
 import org.knime.core.node.defaultnodesettings.DialogComponentBoolean;
 import org.knime.core.node.defaultnodesettings.DialogComponentColorChooser;
@@ -32,6 +34,7 @@ import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
 import org.knime.core.node.defaultnodesettings.SettingsModelColor;
 import org.knime.core.node.defaultnodesettings.SettingsModelDouble;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
+import org.knime.core.node.port.PortObjectSpec;
 
 import com.continental.knime.xlsformatter.commons.UiValidation;
 import com.continental.knime.xlsformatter.commons.XlsFormatterUiOptions;
@@ -41,55 +44,62 @@ public class XlsFormatterConditionalFormatterNodeDialog extends DefaultNodeSetti
 	SettingsModelString tag;
 	SettingsModelBoolean midScalePointActive;
 	SettingsModelDouble min;
+	SettingsModelColor minColor;
 	SettingsModelDouble mid;
+	SettingsModelColor midColor;
 	SettingsModelDouble max;
+	SettingsModelColor maxColor;
+	
+	ChangeListener changeListener = new ConditionalFormatDialogChangeListener();
 	
 	protected XlsFormatterConditionalFormatterNodeDialog() {
 		super();             
 
 		this.createNewGroup("Tag Selection");
-		tag = new SettingsModelString(XlsFormatterConditionalFormatterNodeModel.CFGKEY_TAGSTRING, XlsFormatterConditionalFormatterNodeModel.DEFAULT_TAGSTRING);
-		this.addDialogComponent(new DialogComponentString(tag, XlsFormatterUiOptions.UI_LABEL_SINGLE_TAG));        
+		tag = new SettingsModelString(XlsFormatterConditionalFormatterNodeModel.CFGKEY_TAG, XlsFormatterConditionalFormatterNodeModel.DEFAULT_TAG);
+		this.addDialogComponent(new DialogComponentString(tag, XlsFormatterUiOptions.UI_LABEL_SINGLE_TAG, true, 10));
 
 
 		this.createNewGroup("Conditional Formatting Settings");
-		midScalePointActive = new SettingsModelBoolean(XlsFormatterConditionalFormatterNodeModel.CFGKEY_MIDSCALEPOINT_ON,XlsFormatterConditionalFormatterNodeModel.DEFAULT_MIDSCALEPOINT_ON);
+		midScalePointActive = new SettingsModelBoolean(XlsFormatterConditionalFormatterNodeModel.CFGKEY_MIDSCALEPOINT_ACTIVE,XlsFormatterConditionalFormatterNodeModel.DEFAULT_MIDSCALEPOINT_ACTIVE);
 		this.addDialogComponent(new DialogComponentBoolean( 
 				midScalePointActive, "Mid scale point needed?"));        
 
 		this.setHorizontalPlacement(true);
-		min = new SettingsModelDouble(XlsFormatterConditionalFormatterNodeModel.CFGKEY_MIN_VALUE,XlsFormatterConditionalFormatterNodeModel.DEFAULT_MIN_VALUE);
+		min = new SettingsModelDouble(XlsFormatterConditionalFormatterNodeModel.CFGKEY_MIN_THRESHOLD, XlsFormatterConditionalFormatterNodeModel.DEFAULT_MIN_THRESHOLD);
 		this.addDialogComponent(new DialogComponentNumber( 
-				min, "min", 0.1)); 
-		SettingsModelColor mincolor = new SettingsModelColor(XlsFormatterConditionalFormatterNodeModel.CFGKEY_MIN_COLOR,XlsFormatterConditionalFormatterNodeModel.DEFAULT_MIN_COLOR);
+				min, "min", 0.1, 6));
+		minColor = new SettingsModelColor(XlsFormatterConditionalFormatterNodeModel.CFGKEY_MIN_COLOR, XlsFormatterConditionalFormatterNodeModel.DEFAULT_MIN_COLOR);
 		this.addDialogComponent(new DialogComponentColorChooser( 
-				mincolor, "min color",true));
+				minColor, "min color", true));
 		this.setHorizontalPlacement(false);
 
 		this.setHorizontalPlacement(true);
-		mid = new SettingsModelDouble(XlsFormatterConditionalFormatterNodeModel.CFGKEY_MID_VALUE,XlsFormatterConditionalFormatterNodeModel.DEFAULT_MID_VALUE);
+		mid = new SettingsModelDouble(XlsFormatterConditionalFormatterNodeModel.CFGKEY_MID_THRESHOLD, XlsFormatterConditionalFormatterNodeModel.DEFAULT_MID_THRESHOLD);
 		this.addDialogComponent(new DialogComponentNumber( 
-				mid, "mid", 0.1)); 
-		SettingsModelColor midcolor = new SettingsModelColor(XlsFormatterConditionalFormatterNodeModel.CFGKEY_MID_COLOR,XlsFormatterConditionalFormatterNodeModel.DEFAULT_MID_COLOR);
+				mid, "mid", 0.1, 6));
+		midColor = new SettingsModelColor(XlsFormatterConditionalFormatterNodeModel.CFGKEY_MID_COLOR, XlsFormatterConditionalFormatterNodeModel.DEFAULT_MID_COLOR);
 		this.addDialogComponent(new DialogComponentColorChooser( 
-				midcolor, "mid color",true));
+				midColor, "mid color", true));
 		this.setHorizontalPlacement(false);
 
 		this.setHorizontalPlacement(true);
-		max = new SettingsModelDouble(XlsFormatterConditionalFormatterNodeModel.CFGKEY_MAX_VALUE,XlsFormatterConditionalFormatterNodeModel.DEFAULT_MAX_VALUE);
+		max = new SettingsModelDouble(XlsFormatterConditionalFormatterNodeModel.CFGKEY_MAX_THRESHOLD, XlsFormatterConditionalFormatterNodeModel.DEFAULT_MAX_THRESHOLD);
 		this.addDialogComponent(new DialogComponentNumber( 
-				max, "max", 0.1)); 
-		SettingsModelColor maxcolor = new SettingsModelColor(XlsFormatterConditionalFormatterNodeModel.CFGKEY_MAX_COLOR,XlsFormatterConditionalFormatterNodeModel.DEFAULT_MAX_COLOR);
+				max, "max", 0.1, 6)); 
+		maxColor = new SettingsModelColor(XlsFormatterConditionalFormatterNodeModel.CFGKEY_MAX_COLOR, XlsFormatterConditionalFormatterNodeModel.DEFAULT_MAX_COLOR);
 		this.addDialogComponent(new DialogComponentColorChooser( 
-				maxcolor, "max color",true));
+				maxColor, "max color",true));
 		this.setHorizontalPlacement(false);
 
-		midScalePointActive.addChangeListener(new ChangeListener(){
-			public void stateChanged(final ChangeEvent e) {
-				mid.setEnabled(midScalePointActive.getBooleanValue());
-				midcolor.setEnabled(midScalePointActive.getBooleanValue());
-			}
-		});
+		midScalePointActive.addChangeListener(changeListener);
+	}
+	
+	class ConditionalFormatDialogChangeListener implements ChangeListener {
+		public void stateChanged(final ChangeEvent e) {
+			mid.setEnabled(midScalePointActive.getBooleanValue());
+			midColor.setEnabled(midScalePointActive.getBooleanValue());
+		}
 	}
 	
 	@Override
@@ -103,5 +113,12 @@ public class XlsFormatterConditionalFormatterNodeDialog extends DefaultNodeSetti
 			throw new InvalidSettingsException(midScalePointActive.getBooleanValue() ?
 					"Min must be smaller than mid, and mid must be smaller than max value." :
 					"Min must be smaller than max value.");
+	}
+	
+	@Override
+	public void loadAdditionalSettingsFrom(NodeSettingsRO settings, PortObjectSpec[] specs)
+			throws NotConfigurableException {
+		super.loadAdditionalSettingsFrom(settings, specs);
+		changeListener.stateChanged(null);
 	}
 }

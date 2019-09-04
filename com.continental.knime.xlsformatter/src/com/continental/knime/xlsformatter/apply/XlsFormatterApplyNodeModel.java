@@ -98,7 +98,7 @@ public class XlsFormatterApplyNodeModel extends NodeModel {
 				throw new Exception("The output file already exists and overwriting is disabled in the node's configuration.");
 			
 			WarningMessageContainer warningMessageContainer = new WarningMessageContainer(); // used to sneak out a warning from apply()
-			XlsFormatterApplyLogic.apply(in, out, null,
+			XlsFormatterApplyLogic.apply(in, out,
 					state, warningMessageContainer, exec, logger);
 			if (warningMessageContainer.hasMessage())
 				setWarningMessage(warningMessageContainer.getMessage());
@@ -110,6 +110,7 @@ public class XlsFormatterApplyNodeModel extends NodeModel {
 			if (file != null)
 				DesktopUtil.open(file);
 		}
+		
 		return new PortObject[] {};
 	}
 	
@@ -127,6 +128,19 @@ public class XlsFormatterApplyNodeModel extends NodeModel {
 	protected PortObjectSpec[] configure(final PortObjectSpec[] inSpecs)
 			throws InvalidSettingsException {   	
 
+		String out;
+		try {
+			out = resolveKnimePath(m_outputFile.getStringValue().trim());
+		} catch (Exception e) {
+			throw new InvalidSettingsException("The stated output path is not a valid file path. " + e.getMessage(), e);
+		}
+		
+		if (!m_overwrite.getBooleanValue() && (new File(out)).isFile())
+			throw new InvalidSettingsException("The output file already exists and overwriting is disabled in the node's configuration.");
+		
+		if (m_overwrite.getBooleanValue() && (new File(out)).isFile())
+			setWarningMessage("The output file already exists and will be overwritten.");
+		
 		return new PortObjectSpec[] {};
 	}
 

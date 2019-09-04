@@ -53,7 +53,7 @@ public class ColorTools {
 				Integer.parseInt(components[1]),
 				Integer.parseInt(components[2]));
 		} catch (Exception e) {
-			throw new IllegalArgumentException("Could not interpret color code " + value + ". Valid RGB formats for e.g. red would be #FF0000 or 255/0/0.");
+			throw new IllegalArgumentException("Could not interpret color code \"" + value + "\". Valid RGB formats for e.g. red would be #FF0000 or 255/0/0.");
 		}
 	}
 	

@@ -22,7 +22,9 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import org.knime.core.node.InvalidSettingsException;
+import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
+import org.knime.core.node.NotConfigurableException;
 import org.knime.core.node.defaultnodesettings.DefaultNodeSettingsPane;
 import org.knime.core.node.defaultnodesettings.DialogComponentBoolean;
 import org.knime.core.node.defaultnodesettings.DialogComponentButtonGroup;
@@ -32,6 +34,7 @@ import org.knime.core.node.defaultnodesettings.DialogComponentStringSelection;
 import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
 import org.knime.core.node.defaultnodesettings.SettingsModelColor;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
+import org.knime.core.node.port.PortObjectSpec;
 
 import com.continental.knime.xlsformatter.commons.UiValidation;
 import com.continental.knime.xlsformatter.commons.XlsFormatterUiOptions;
@@ -41,13 +44,18 @@ public class XlsFormatterCellBackgroundColorizerNodeDialog extends DefaultNodeSe
 
 	SettingsModelString controlTableStyle;
 	SettingsModelString tag;
-	SettingsModelBoolean backgroundColor;
+	SettingsModelBoolean changeBackgroundColor;
+	SettingsModelColor backgroundColor;
 	SettingsModelString backgroundPattern;
+	SettingsModelBoolean changeBackgroundPatternColor;
+	SettingsModelColor backgroundPatternColor;
 
+	ChangeListener changeListener = new BackgroundColorizerDialogChangeListener();
+	
 	protected XlsFormatterCellBackgroundColorizerNodeDialog() {
 		super();
 
-		this.createNewGroup(XlsFormatterUiOptions.UI_LABEL_CONTROLTABLESTYLE_GROUPTITLE);
+		this.createNewGroup(XlsFormatterUiOptions.UI_LABEL_CONTROL_TABLE_STYLE_GROUPTITLE);
 		setHorizontalPlacement(true);
 		controlTableStyle = new SettingsModelString(XlsFormatterCellBackgroundColorizerNodeModel.CFGKEY_CONTROLTABLESTYLE, XlsFormatterCellBackgroundColorizerNodeModel.DEFAULT_CONTROLTABLESTYLE);
 		String[] controlTableStyleButtonArray = { XlsFormatterCellBackgroundColorizerNodeModel.OPTION_CONTROLTABLESTYLE_STANDARD, XlsFormatterCellBackgroundColorizerNodeModel.OPTION_CONTROLTABLESTYLE_DIRECT};
@@ -59,100 +67,81 @@ public class XlsFormatterCellBackgroundColorizerNodeDialog extends DefaultNodeSe
 
 		
 		this.createNewGroup("Tag Selection");
-		tag = new SettingsModelString(XlsFormatterCellBackgroundColorizerNodeModel.CFGKEY_TAGSTRING,XlsFormatterCellBackgroundColorizerNodeModel.DEFAULT_TAGSTRING);
-		DialogComponentString tagstringComponent = new DialogComponentString(tag, XlsFormatterUiOptions.UI_LABEL_SINGLE_TAG); 
+		tag = new SettingsModelString(XlsFormatterCellBackgroundColorizerNodeModel.CFGKEY_TAGSTRING, XlsFormatterCellBackgroundColorizerNodeModel.DEFAULT_TAGSTRING);
+		DialogComponentString tagstringComponent = new DialogComponentString(tag, XlsFormatterUiOptions.UI_LABEL_SINGLE_TAG, true, 10); 
 		tagstringComponent.setToolTipText(XlsFormatterUiOptions.UI_TOOLTIP_SINGLE_TAG);
 		this.addDialogComponent(tagstringComponent); 
 
 		
 		this.createNewGroup("Background Color");
 		this.setHorizontalPlacement(true);
-		backgroundColor = new SettingsModelBoolean(XlsFormatterCellBackgroundColorizerNodeModel.CFGKEY_BACKGROUND_COLOR_SELECTION,XlsFormatterCellBackgroundColorizerNodeModel.DEFAULT_BACKGROUND_COLOR_SELECTION);
+		changeBackgroundColor = new SettingsModelBoolean(XlsFormatterCellBackgroundColorizerNodeModel.CFGKEY_BACKGROUND_COLOR_SELECTION, XlsFormatterCellBackgroundColorizerNodeModel.DEFAULT_BACKGROUND_COLOR_SELECTION);
 		DialogComponentBoolean backgroundcolorselectionComponent = new DialogComponentBoolean(
-				backgroundColor, "Change color?");
+				changeBackgroundColor, "Change color?");
 		backgroundcolorselectionComponent.setToolTipText("Do not modify, remove or select the background color.");
 		this.addDialogComponent(backgroundcolorselectionComponent);
 		
-		SettingsModelColor backgroundcolor = new SettingsModelColor(XlsFormatterCellBackgroundColorizerNodeModel.CFGKEY_BACKGROUNDCOLOR, XlsFormatterCellBackgroundColorizerNodeModel.DEFAULT_BACKGROUNDCOLOR);
+		backgroundColor = new SettingsModelColor(XlsFormatterCellBackgroundColorizerNodeModel.CFGKEY_BACKGROUNDCOLOR, XlsFormatterCellBackgroundColorizerNodeModel.DEFAULT_BACKGROUNDCOLOR);
 		this.addDialogComponent(new DialogComponentColorChooser(
-				backgroundcolor, "color", true));
+				backgroundColor, "color", true));
 		this.setHorizontalPlacement(false);
 
 		
 		this.createNewGroup("Pattern Fill");
-		backgroundPattern = new SettingsModelString(XlsFormatterCellBackgroundColorizerNodeModel.CFGKEY_BACKGROUND_PATTERN_SELECTION,XlsFormatterCellBackgroundColorizerNodeModel.DEFAULT_BACKGROUND_PATTERN_SELECTION);
+		backgroundPattern = new SettingsModelString(XlsFormatterCellBackgroundColorizerNodeModel.CFGKEY_BACKGROUND_PATTERN_SELECTION, XlsFormatterCellBackgroundColorizerNodeModel.DEFAULT_BACKGROUND_PATTERN_SELECTION);
 		DialogComponentStringSelection backgroundpatternselectionComponent = new DialogComponentStringSelection(
 				backgroundPattern, "pattern fill", XlsFormatterCellBackgroundColorizerNodeModel.fillPatternDropdownOptions);
 		backgroundpatternselectionComponent.setToolTipText("Do not modify a previously defined pattern fill or select a pattern now.");
 		this.addDialogComponent(backgroundpatternselectionComponent);
 		
 		this.setHorizontalPlacement(true);
-		SettingsModelBoolean backgroundpatterncolorselection = new SettingsModelBoolean(XlsFormatterCellBackgroundColorizerNodeModel.CFGKEY_BACKGROUND_PATTERN_COLOR_SELECTION, XlsFormatterCellBackgroundColorizerNodeModel.DEFAULT_BACKGROUND_PATTERN_COLOR_SELECTION);
+		changeBackgroundPatternColor = new SettingsModelBoolean(XlsFormatterCellBackgroundColorizerNodeModel.CFGKEY_BACKGROUND_PATTERN_COLOR_SELECTION, XlsFormatterCellBackgroundColorizerNodeModel.DEFAULT_BACKGROUND_PATTERN_COLOR_SELECTION);
 		this.addDialogComponent(new DialogComponentBoolean(
-				backgroundpatterncolorselection, "Change color?"));
+				changeBackgroundPatternColor, "Change color?"));
 		
-		SettingsModelColor backgroundpatterncolor = new SettingsModelColor(XlsFormatterCellBackgroundColorizerNodeModel.CFGKEY_BACKGROUND_PATTERN_COLOR, XlsFormatterCellBackgroundColorizerNodeModel.DEFAULT_BACKGROUND_PATTERN_COLOR);
+		backgroundPatternColor = new SettingsModelColor(XlsFormatterCellBackgroundColorizerNodeModel.CFGKEY_BACKGROUND_PATTERN_COLOR, XlsFormatterCellBackgroundColorizerNodeModel.DEFAULT_BACKGROUND_PATTERN_COLOR);
 		this.addDialogComponent(new DialogComponentColorChooser(
-				backgroundpatterncolor, "color", true));
+				backgroundPatternColor, "color", true));
 
-
-		controlTableStyle.addChangeListener(new ChangeListener(){
-			public void stateChanged(final ChangeEvent e) {
-				boolean action = controlTableStyle.getStringValue().equals(controlTableStyleButtonArray[0]);
-				tag.setEnabled(action);
-				backgroundColor.setEnabled(action);
-				backgroundPattern.setEnabled(action);
-				if(action) {
-					if(backgroundColor.getBooleanValue())
-						backgroundcolor.setEnabled(action);
-					if(backgroundPattern.getStringValue().equals(XlsFormatterState.FormattingFlag.ON.toString().toLowerCase())) {
-						backgroundpatterncolorselection.setEnabled(action);
-						backgroundpatterncolor.setEnabled(action);
-					}
-				}
-				else {
-					backgroundpatterncolorselection.setEnabled(action);
-					backgroundpatterncolor.setEnabled(action);
-					backgroundcolor.setEnabled(action);
-				}
-			}
-		});
-
-		backgroundColor.addChangeListener(new ChangeListener() {
-			public void stateChanged(final ChangeEvent e) {
-				boolean action = backgroundColor.getBooleanValue();
-				backgroundcolor.setEnabled(action);
-			}
-		});
-
-		backgroundPattern.addChangeListener(new ChangeListener() {
-			public void stateChanged(final ChangeEvent e) {
-				if(backgroundPattern.isEnabled() &&
-						!backgroundPattern.getStringValue().equals(XlsFormatterState.FillPattern.NONE.toString().toLowerCase()))
-				backgroundpatterncolorselection.setEnabled(true);
-				if(backgroundpatterncolorselection.isEnabled() && 
-						backgroundpatterncolorselection.getBooleanValue())
-					backgroundpatterncolor.setEnabled(true);
-			}
-		});
-
-		backgroundpatterncolorselection.addChangeListener(new ChangeListener() {
-			public void stateChanged(final ChangeEvent e) {
-				boolean action = backgroundpatterncolorselection.getBooleanValue();
-				backgroundpatterncolor.setEnabled(action);
-			}
-		});
+		controlTableStyle.addChangeListener(changeListener);
+		changeBackgroundColor.addChangeListener(changeListener);
+		backgroundPattern.addChangeListener(changeListener);
+		changeBackgroundPatternColor.addChangeListener(changeListener);
 	}
 
+	class BackgroundColorizerDialogChangeListener implements ChangeListener {
+		public void stateChanged(final ChangeEvent e) {
+			boolean isStandardMode = controlTableStyle.getStringValue().equals(XlsFormatterCellBackgroundColorizerNodeModel.OPTION_CONTROLTABLESTYLE_STANDARD);
+			boolean isPatternChangeChosen = !backgroundPattern.getStringValue().equals(XlsFormatterState.FillPattern.UNMODIFIED.toString().toLowerCase());
+			
+			tag.setEnabled(isStandardMode);
+			changeBackgroundColor.setEnabled(isStandardMode);
+			backgroundPattern.setEnabled(isStandardMode);
+			backgroundColor.setEnabled(isStandardMode && changeBackgroundColor.getBooleanValue());
+			changeBackgroundPatternColor.setEnabled(isStandardMode && isPatternChangeChosen);
+			backgroundPatternColor.setEnabled(isStandardMode && isPatternChangeChosen && changeBackgroundPatternColor.getBooleanValue());
+		}
+	}
+	
 	@Override
 	public void saveAdditionalSettingsTo(NodeSettingsWO settings) throws InvalidSettingsException {
 		super.saveAdditionalSettingsTo(settings);
 
 		if (controlTableStyle.getStringValue().equals(XlsFormatterCellBackgroundColorizerNodeModel.OPTION_CONTROLTABLESTYLE_STANDARD)) {
 			UiValidation.validateTagField(tag);
-			if (!backgroundColor.getBooleanValue() && backgroundPattern.getStringValue().equals(XlsFormatterState.FillPattern.UNMODIFIED.toString().toLowerCase()))
+			if (!changeBackgroundColor.getBooleanValue() && backgroundPattern.getStringValue().equals(XlsFormatterState.FillPattern.UNMODIFIED.toString().toLowerCase()))
 				throw new InvalidSettingsException("Background color or fill pattern need to be changed, otherwise this node would not have any effect.");
 		}
+	}
+	
+	@Override
+	public void loadAdditionalSettingsFrom(NodeSettingsRO settings, PortObjectSpec[] specs)
+			throws NotConfigurableException {
+		super.loadAdditionalSettingsFrom(settings, specs);
+		
+		// since some String values seem to be lazily load in the constructor (ChangeListener
+		// activation doesn't have an effect there), update the UI status once more here
+		changeListener.stateChanged(null);
 	}
 }
 

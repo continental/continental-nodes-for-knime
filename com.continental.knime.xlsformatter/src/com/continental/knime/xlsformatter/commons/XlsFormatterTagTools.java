@@ -25,7 +25,7 @@ import org.apache.commons.lang3.StringUtils;
 
 public class XlsFormatterTagTools {
 
-	public final static String INVALID_TAGLIST_CHARACTERS = ";*/|+&?!";
+	public final static String INVALID_TAGLIST_CHARACTERS = ";*|+&?!";
 	public final static String INVALID_TAG_CHARACTERS = INVALID_TAGLIST_CHARACTERS + ",";
 	
 	/**
@@ -42,6 +42,8 @@ public class XlsFormatterTagTools {
 	 * Check whether a single search tag is present in a comma-separated list of tags.
 	 */
 	public static boolean doesTagMatch(String cellTags, String searchTag) {
+		if (searchTag == null || searchTag.equals("") || cellTags == null || cellTags.equals(""))
+			return false;
 		return parseCommaSeparatedTagList(cellTags).stream()
 				.filter(s -> s.trim().length() >= 1 && s.equals(searchTag.trim()))
 				.findFirst().isPresent();
@@ -49,15 +51,16 @@ public class XlsFormatterTagTools {
 	
 	/**
 	 * Checks whether a single tag is valid, i.e. doesn't have any forbidden characters, esp. comma.
+	 * An empty String qualifies as valid, despite technically not holding a tag.
 	 */
 	public static boolean isValidSingleTag(String tag) {
-		return tag.trim().length() >= 1 && !StringUtils.containsAny(tag, INVALID_TAG_CHARACTERS);
+		return tag != null && !StringUtils.containsAny(tag, INVALID_TAG_CHARACTERS);
 	}
 	
 	/**
 	 * Checks whether a comma-separated tag list is valid, i.e. doesn't have any forbidden characters
 	 */
 	public static boolean isValidTagList(String commaSeparatedTagList) {
-		return commaSeparatedTagList.trim().length() >= 1 && !StringUtils.containsAny(commaSeparatedTagList, INVALID_TAGLIST_CHARACTERS);
+		return commaSeparatedTagList != null && !StringUtils.containsAny(commaSeparatedTagList, INVALID_TAGLIST_CHARACTERS);
 	}
 }

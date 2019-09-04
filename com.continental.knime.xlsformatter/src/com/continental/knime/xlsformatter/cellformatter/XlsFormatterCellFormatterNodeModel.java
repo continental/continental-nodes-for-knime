@@ -38,13 +38,14 @@ import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.port.PortType;
 
-import com.continental.knime.xlsformatter.apply.XlsFormatterApplyLogic;
 import com.continental.knime.xlsformatter.commons.AddressingTools;
 import com.continental.knime.xlsformatter.commons.TagBasedXlsCellFormatterNodeModel;
 import com.continental.knime.xlsformatter.commons.WarningMessageContainer;
 import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableAnalysisTools;
 import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableValidator;
 import com.continental.knime.xlsformatter.commons.XlsFormatterUiOptions;
+import com.continental.knime.xlsformatter.commons.XlsFormattingStateValidator;
+import com.continental.knime.xlsformatter.commons.XlsFormattingStateValidator.ValidationModes;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterState;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterState.FormattingFlag;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterStateSpec;
@@ -79,7 +80,7 @@ public class XlsFormatterCellFormatterNodeModel extends TagBasedXlsCellFormatter
 	static final String CFGKEY_TEXTROTATION = "TextRotation";
 	static final String DEFAULT_TEXTROTATION = XlsFormatterState.FormattingFlag.UNMODIFIED.toString().toLowerCase();
 	final SettingsModelString m_textRotation =
-			new SettingsModelString(CFGKEY_TEXTROTATION, DEFAULT_TEXTROTATION);
+			new XlsFormatterCellFormatterSettingsModelString(CFGKEY_TEXTROTATION, DEFAULT_TEXTROTATION);
 
 	static final String CFGKEY_CELL_STYLE = "CellStyle";
 	static final String DEFAULT_CELL_STYLE = XlsFormatterState.CellDataType.UNMODIFIED.toString();
@@ -91,6 +92,10 @@ public class XlsFormatterCellFormatterNodeModel extends TagBasedXlsCellFormatter
 	final SettingsModelString m_textFormat =
 			new SettingsModelString(CFGKEY_TEXT_FORMAT, DEFAULT_TEXT_FORMAT);
 	
+	/**
+	 * Enum of pre-defined text formats. It's safe to add new entries here (in both methods), they are not explicitly
+	 * referenced elsewhere (except unmodified), e.g. in the dialog implementation.
+	 */
 	public enum TextPresets {
 		UNMODIFIED,
 		PERCENT,
@@ -170,13 +175,20 @@ public class XlsFormatterCellFormatterNodeModel extends TagBasedXlsCellFormatter
 			throw new IllegalArgumentException("The provided input table is not a valid XLS control table. See log for details.");
 
 		XlsFormatterState xlsf = XlsFormatterState.getDeepClone(inObjects[1]);
+		XlsFormatterState.SheetState xlsfs = xlsf.getCurrentSheetStateForModification();
+		WarningMessageContainer warningMessageContainer = new WarningMessageContainer();
 
 		List<CellAddress> targetCells =
 				XlsFormatterControlTableAnalysisTools.getCellsMatchingTag((BufferedDataTable)inObjects[0], m_tag.getStringValue().trim(), exec, logger);
-		warnOnNoMatchingTags(targetCells, m_tag.getStringValue().trim());
+		warnOnNoMatchingTags(targetCells, m_tag.getStringValue().trim(), warningMessageContainer);
 
+		// check for a partly overlap of these target cells with a previously merged range and warn
+		String mergeOverlapRanges = XlsFormatterControlTableAnalysisTools.getOverlappingRanges(targetCells, xlsfs.mergeRanges, exec, logger);
+		if (mergeOverlapRanges != null)
+			warningMessageContainer.addMessage("Modification on parts of previously merged range(s) (" + mergeOverlapRanges + ") will have no effect.");
+		
 		for (CellAddress cell : targetCells) {
-			XlsFormatterState.CellState cellState = AddressingTools.safelyGetCellInMap(xlsf.cells, cell);
+			XlsFormatterState.CellState cellState = AddressingTools.safelyGetCellInMap(xlsfs.cells, cell);
 
 			FormattingFlag flag = FormattingFlag.UNMODIFIED;
 			if(m_wordWrap.getBooleanValue())
@@ -196,7 +208,7 @@ public class XlsFormatterCellFormatterNodeModel extends TagBasedXlsCellFormatter
 				cellState.cellVerticalAlignment = optionVertictalAlignment;
 
 			if (!m_textRotation.getStringValue().toUpperCase().equals(XlsFormatterState.FormattingFlag.UNMODIFIED.toString())) {
-				String value = m_textRotation.getStringValue().replace("°", "");
+				String value = m_textRotation.getStringValue().replace("Â°", "");
 				try {
 					cellState.textTiltDegree = Integer.parseInt(value);
 				}
@@ -214,8 +226,7 @@ public class XlsFormatterCellFormatterNodeModel extends TagBasedXlsCellFormatter
 				cellState.cellDataType = dataType;
 		}
 
-		WarningMessageContainer warningMessageContainer = new WarningMessageContainer(); 
-		XlsFormatterApplyLogic.checkDerivedStyleComplexity(xlsf, warningMessageContainer, exec, logger);
+		XlsFormattingStateValidator.validateState(xlsf, ValidationModes.STYLES, warningMessageContainer, exec, logger);
 		if (warningMessageContainer.hasMessage())
 			setWarningMessage(warningMessageContainer.getMessage());
 
@@ -228,9 +239,6 @@ public class XlsFormatterCellFormatterNodeModel extends TagBasedXlsCellFormatter
 
 		if (!XlsFormatterControlTableValidator.isControlTableSpec((DataTableSpec)inSpecs[0], logger))
 			throw new InvalidSettingsException("The configured input table header is not that of a valid XLS Formatting control table. See log for details.");
-
-		if (inSpecs[1] != null && ((XlsFormatterStateSpec)inSpecs[1]).getContainsMergeInstruction() == true)
-			throw new InvalidSettingsException("No futher XLS Formatting nodes allowed after Cell Merger.");
 
 		return new PortObjectSpec[] { inSpecs[1] == null ? XlsFormatterStateSpec.getEmptySpec() : ((XlsFormatterStateSpec)inSpecs[1]).getCopy() };
 	}

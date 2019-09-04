@@ -58,11 +58,11 @@ public class XlsFormatterCellFormatterNodeDialog extends DefaultNodeSettingsPane
 				.map(x -> x.toString()).collect(Collectors.toList());
 		textRotationSelectionList = new ArrayList<String>(6);
 		textRotationSelectionList.add(XlsFormatterState.FormattingFlag.UNMODIFIED.toString().toLowerCase());
-		textRotationSelectionList.add("+90°");
-		textRotationSelectionList.add("+45°");
-		textRotationSelectionList.add("0°");
-		textRotationSelectionList.add("-45°");
-		textRotationSelectionList.add("-90°");
+		textRotationSelectionList.add("+90Â°");
+		textRotationSelectionList.add("+45Â°");
+		textRotationSelectionList.add("0Â°");
+		textRotationSelectionList.add("-45Â°");
+		textRotationSelectionList.add("-90Â°");
 	}
 
 	SettingsModelString tag;
@@ -77,25 +77,25 @@ public class XlsFormatterCellFormatterNodeDialog extends DefaultNodeSettingsPane
 		super();
 
 		this.createNewGroup("Tag Selection");
-		tag = new SettingsModelString(XlsFormatterCellFormatterNodeModel.CFGKEY_TAGSTRING,XlsFormatterCellFormatterNodeModel.DEFAULT_TAGSTRING);
-		this.addDialogComponent(new DialogComponentString(tag, "applies to tag (single tag only)"));        
+		tag = new SettingsModelString(XlsFormatterCellFormatterNodeModel.CFGKEY_TAGSTRING, XlsFormatterCellFormatterNodeModel.DEFAULT_TAGSTRING);
+		this.addDialogComponent(new DialogComponentString(tag, "applies to tag (single tag only)", true, 10));        
 
 
 		this.createNewGroup("Text Position and Layout");        
 		setHorizontalPlacement(false);
-		horizontalAlignment = new SettingsModelString(XlsFormatterCellFormatterNodeModel.CFGKEY_HORIZONTALALIGNMENT,XlsFormatterCellFormatterNodeModel.DEFAULT_HORIZONTALALIGNMENT);
+		horizontalAlignment = new SettingsModelString(XlsFormatterCellFormatterNodeModel.CFGKEY_HORIZONTALALIGNMENT, XlsFormatterCellFormatterNodeModel.DEFAULT_HORIZONTALALIGNMENT);
 		this.addDialogComponent(new DialogComponentStringSelection(
 				horizontalAlignment, "horizontal alignment", horizontalAlignmentSelectionList));
 
-		verticalAlignment = new SettingsModelString(XlsFormatterCellFormatterNodeModel.CFGKEY_VERTICALALIGNMENT,XlsFormatterCellFormatterNodeModel.DEFAULT_VERTICALALIGNMENT);
+		verticalAlignment = new SettingsModelString(XlsFormatterCellFormatterNodeModel.CFGKEY_VERTICALALIGNMENT, XlsFormatterCellFormatterNodeModel.DEFAULT_VERTICALALIGNMENT);
 		this.addDialogComponent(new DialogComponentStringSelection(
 				verticalAlignment, "vertical alignment", verticalAlignmentSelectionList));
 
-		textRotationAngle = new SettingsModelString(XlsFormatterCellFormatterNodeModel.CFGKEY_TEXTROTATION,XlsFormatterCellFormatterNodeModel.DEFAULT_TEXTROTATION);
+		textRotationAngle = new SettingsModelString(XlsFormatterCellFormatterNodeModel.CFGKEY_TEXTROTATION, XlsFormatterCellFormatterNodeModel.DEFAULT_TEXTROTATION);
 		this.addDialogComponent(new DialogComponentStringSelection(
 				textRotationAngle, "text rotation angle", textRotationSelectionList));
 
-		wordWrap = new SettingsModelBoolean(XlsFormatterCellFormatterNodeModel.CFGKEY_WORDWRAP,XlsFormatterCellFormatterNodeModel.DEFAULT_WORDWRAP);
+		wordWrap = new SettingsModelBoolean(XlsFormatterCellFormatterNodeModel.CFGKEY_WORDWRAP, XlsFormatterCellFormatterNodeModel.DEFAULT_WORDWRAP);
 		this.addDialogComponent(new DialogComponentBoolean(
 				wordWrap,	"word wrap"));
 
@@ -106,29 +106,19 @@ public class XlsFormatterCellFormatterNodeDialog extends DefaultNodeSettingsPane
 				cellStyleConversion, "cell style conversion (from String to)", dataTypeSelectionList));
 
 		this.setHorizontalPlacement(true);
-		textFormat = new SettingsModelString(XlsFormatterCellFormatterNodeModel.CFGKEY_TEXT_FORMAT,XlsFormatterCellFormatterNodeModel.DEFAULT_TEXT_FORMAT);
-		DialogComponentString textFormatComponent = new DialogComponentString(textFormat , "text format");
+		textFormat = new SettingsModelString(XlsFormatterCellFormatterNodeModel.CFGKEY_TEXT_FORMAT, XlsFormatterCellFormatterNodeModel.DEFAULT_TEXT_FORMAT);
+		DialogComponentString textFormatComponent = new DialogComponentString(textFormat, "text format", false, 20);
 		textFormatComponent.setToolTipText("Set text format to e.g. default, percent (0.00%), whole number (#,##0), ...");
 		this.addDialogComponent(textFormatComponent);
-		SettingsModelString textPresets = new SettingsModelString(XlsFormatterCellFormatterNodeModel.CFGKEY_TEXT_PRESETS , XlsFormatterCellFormatterNodeModel.DEFAULT_TEXT_PRESETS);
-		DialogComponentStringSelection textPresetsComponent = new DialogComponentStringSelection(textPresets , "" , textPresetSelectionList);
+		SettingsModelString textPresets = new SettingsModelString(XlsFormatterCellFormatterNodeModel.CFGKEY_TEXT_PRESETS, XlsFormatterCellFormatterNodeModel.DEFAULT_TEXT_PRESETS);
+		DialogComponentStringSelection textPresetsComponent = new DialogComponentStringSelection(textPresets, "", textPresetSelectionList);
 		this.addDialogComponent(textPresetsComponent);
 
-		textPresets.addChangeListener(new ChangeListener(){
+		textPresets.addChangeListener(new ChangeListener() {
 			public void stateChanged(final ChangeEvent e) {
-				if(!textPresets.getStringValue().equals(XlsFormatterCellFormatterNodeModel.TextPresets.UNMODIFIED.toString())) {
-					if(textPresets.getStringValue().equals(XlsFormatterCellFormatterNodeModel.TextPresets.PERCENT.toString()))
-						textFormat.setStringValue(XlsFormatterCellFormatterNodeModel.TextPresets.PERCENT.getTextFormat());
-					if(textPresets.getStringValue().equals(XlsFormatterCellFormatterNodeModel.TextPresets.INTEGER.toString()))
-						textFormat.setStringValue(XlsFormatterCellFormatterNodeModel.TextPresets.INTEGER.getTextFormat());
-					if(textPresets.getStringValue().equals(XlsFormatterCellFormatterNodeModel.TextPresets.THOUSANDSEPARATED.toString()))
-						textFormat.setStringValue(XlsFormatterCellFormatterNodeModel.TextPresets.THOUSANDSEPARATED.getTextFormat());
-					if(textPresets.getStringValue().equals(XlsFormatterCellFormatterNodeModel.TextPresets.FINANCIAL.toString()))
-						textFormat.setStringValue(XlsFormatterCellFormatterNodeModel.TextPresets.FINANCIAL.getTextFormat());
-					if(textPresets.getStringValue().equals(XlsFormatterCellFormatterNodeModel.TextPresets.DATE.toString()))
-						textFormat.setStringValue(XlsFormatterCellFormatterNodeModel.TextPresets.DATE.getTextFormat());
-					if(textPresets.getStringValue().equals(XlsFormatterCellFormatterNodeModel.TextPresets.DATETIME.toString()))
-						textFormat.setStringValue(XlsFormatterCellFormatterNodeModel.TextPresets.DATETIME.getTextFormat());
+				if (!textPresets.getStringValue().equals(XlsFormatterCellFormatterNodeModel.TextPresets.UNMODIFIED.toString())) {
+					XlsFormatterCellFormatterNodeModel.TextPresets preset = XlsFormatterUiOptions.getEnumEntryFromString(XlsFormatterCellFormatterNodeModel.TextPresets.values(), textPresets.getStringValue());
+					textFormat.setStringValue(preset.getTextFormat());
 					textPresets.setStringValue(XlsFormatterCellFormatterNodeModel.TextPresets.UNMODIFIED.toString());
 				}
 			}

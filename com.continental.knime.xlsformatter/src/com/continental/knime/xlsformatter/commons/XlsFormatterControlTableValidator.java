@@ -24,6 +24,7 @@ import org.knime.core.data.DataColumnSpec;
 import org.knime.core.data.DataRow;
 import org.knime.core.data.DataTableSpec;
 import org.knime.core.data.StringValue;
+import org.knime.core.data.def.DoubleCell;
 import org.knime.core.node.BufferedDataTable;
 import org.knime.core.node.CanceledExecutionException;
 import org.knime.core.node.ExecutionContext;
@@ -74,11 +75,11 @@ public class XlsFormatterControlTableValidator {
 			try {
 				rowIndex = Integer.parseInt(row.getKey().getString());
 			} catch (NumberFormatException ne) {
-				logger.warn("Xls Formatting Control Table check failed: rowID " + row.getKey().getString() + " cannot be parsed to Integer.");
+				logger.warn("Xls Formatting Control Table check failed: rowID \"" + row.getKey().getString() + "\" cannot be parsed to Integer.");
 				return false;
 			}
 			if (rowIndex != currentRow + 1) {
-				logger.warn("Xls Formatting Control Table check failed: rowID " + rowIndex + " does not match the expected " + (currentRow + 1));
+				logger.warn("Xls Formatting Control Table check failed due to unexpected row order: rowID " + rowIndex + " does not match the expected " + (currentRow + 1));
 				return false;
 			}
 			currentRow++;
@@ -87,7 +88,7 @@ public class XlsFormatterControlTableValidator {
 				for (int c = 0; c < spec.getNumColumns(); c++) {
 					DataCell cell = row.getCell(c);
 					if (cell != null && !cell.isMissing() && !XlsFormatterTagTools.isValidTagList(cell.toString())) {
-						logger.warn("Xls Formatting Control Table check failed at row " + currentRow + ", cell " + c + ": Comma-separated tag list contains invalid character " + XlsFormatterTagTools.INVALID_TAGLIST_CHARACTERS);
+						logger.warn("Xls Formatting Control Table check failed at rowID \"" + row.getKey().getString() + "\", column \"" + spec.getColumnSpec(c).getName() + "\": Comma-separated tag list contains invalid character(s), i.e. " + XlsFormatterTagTools.INVALID_TAGLIST_CHARACTERS);
 						return false;
 					}
 				}
@@ -159,7 +160,7 @@ public class XlsFormatterControlTableValidator {
   		DataColumnSpec columnSpec = spec.getColumnSpec(c);
   		if ((type == ControlTableType.STRING || type == ControlTableType.STRING_WITHOUT_CONTENT_CHECK) && !columnSpec.getType().isCompatible(StringValue.class))
   			return "Xls Formatting Control Table check failed: all columns must be of type String. Possible solution: Use Number to String node.";
-  		if (type == ControlTableType.DOUBLE && !columnSpec.getType().getName().equals("Number (double)"))
+  		if (type == ControlTableType.DOUBLE && !columnSpec.getType().getCellClass().equals(DoubleCell.class))
   			return "Xls Formatting Control Table check failed: all columns must be of type Double for usage with this node.";
   		String expectedXlsColName = CellReference.convertNumToColString(c);
   		String expectedPaddedXlsColName = XlsFormatterControlTableValidator.padColumnName(expectedXlsColName);

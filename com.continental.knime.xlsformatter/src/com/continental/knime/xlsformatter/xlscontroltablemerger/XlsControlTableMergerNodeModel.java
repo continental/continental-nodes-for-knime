@@ -44,10 +44,10 @@ public class XlsControlTableMergerNodeModel extends NodeModel {
 	private static final NodeLogger logger = NodeLogger
 			.getLogger(XlsControlTableMergerNodeModel.class);
 
-	static final String CFGKEY_MODE_STRING = "Mode";
-	static final String DEFAULT_MODE_STRING = Modes.APPEND.toString();
-	final SettingsModelString m_modeString =
-			new SettingsModelString(CFGKEY_MODE_STRING, DEFAULT_MODE_STRING);
+	static final String CFGKEY_MODE = "Mode";
+	static final String DEFAULT_MODE = Modes.APPEND.toString();
+	final SettingsModelString m_mode =
+			new SettingsModelString(CFGKEY_MODE, DEFAULT_MODE);
 
 	/**
 	 * Constructor for the node model.
@@ -66,12 +66,12 @@ public class XlsControlTableMergerNodeModel extends NodeModel {
 			final ExecutionContext exec) throws Exception {
 
 		if (!XlsFormatterControlTableValidator.isControlTable(inData[0], exec, logger))
-			throw new Exception("Top table is not a XLS Formatter Control Table.");
+			throw new Exception("Top table is not a XLS Formatter Control Table. See log for details.");
 		if (!XlsFormatterControlTableValidator.isControlTable(inData[1], exec, logger))
-			throw new Exception("Bottom table is not a XLS Formatter Control Table.");
+			throw new Exception("Bottom table is not a XLS Formatter Control Table. See log for details.");
 
 		return new BufferedDataTable[] { XlsFormatterControlTableCreateTools.merge(inData[0], inData[1],
-				Modes.getFromString(m_modeString.getStringValue()) == Modes.OVERWRITE, exec, logger) };
+				Modes.getFromString(m_mode.getStringValue()) == Modes.OVERWRITE, exec, logger) };
 	}
 
 
@@ -104,7 +104,7 @@ public class XlsControlTableMergerNodeModel extends NodeModel {
 	@Override
 	protected void saveSettingsTo(final NodeSettingsWO settings) {
 
-		m_modeString.saveSettingsTo(settings);        
+		m_mode.saveSettingsTo(settings);        
 	}
 
 	/**
@@ -114,7 +114,7 @@ public class XlsControlTableMergerNodeModel extends NodeModel {
 	protected void loadValidatedSettingsFrom(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 
-		m_modeString.loadSettingsFrom(settings);
+		m_mode.loadSettingsFrom(settings);
 	}
 
 	/**
@@ -124,7 +124,7 @@ public class XlsControlTableMergerNodeModel extends NodeModel {
 	protected void validateSettings(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 
-		m_modeString.validateSettings(settings);
+		m_mode.validateSettings(settings);
 	}
 
 	/**

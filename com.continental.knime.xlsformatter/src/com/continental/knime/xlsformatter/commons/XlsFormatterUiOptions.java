@@ -35,9 +35,9 @@ public class XlsFormatterUiOptions {
 	public final static String UI_LABEL_SINGLE_TAG = "applies to tag (single tag only)";
 	public final static String UI_LABEL_FONT = "(RGB, either in format #FF0000 or 255/0/0)";
 	public final static String UI_TOOLTIP_SINGLE_TAG = "Select the tag from your control table for which the format should be changed.";
-	public final static String UI_LABEL_CONTROLTABLESTYLE_KEY = "ControlTableStyle";
-	public final static String UI_LABEL_CONTROLTABLESTYLE_GROUPTITLE = "Control Table Style";
-	public final static String UI_LABEL_CONTROLTABLESTYLE_STANDARD = "standard tags";
+	public final static String UI_LABEL_CONTROL_TABLE_STYLE_KEY = "ControlTableStyle";
+	public final static String UI_LABEL_CONTROL_TABLE_STYLE_GROUPTITLE = "Control Table Style";
+	public final static String UI_LABEL_CONTROL_TABLE_STYLE_STANDARD = "standard tags";
 	public final static String UI_ERROR_EMPTY_TAG = "Tag cannot be empty. Please set a freely chosen tag that matches an entry in the provided control table.";
 	
 	
@@ -51,8 +51,12 @@ public class XlsFormatterUiOptions {
 		return Arrays.stream(values).map(x -> x.toString().toLowerCase()).collect(Collectors.toList());
 	}
 	
+	public static <T> String[] getDropdownArrayFromEnum(T[] values, boolean toLowerCase) {
+		return Arrays.stream(values).map(x -> toLowerCase ? x.toString().toLowerCase() : x.toString()).toArray(String[]::new);
+	}
+	
 	public static <T> String[] getDropdownArrayFromEnum(T[] values) {
-		return Arrays.stream(values).map(x -> x.toString().toLowerCase()).toArray(String[]::new);
+		return getDropdownArrayFromEnum(values, true);
 	}
 	
 	public static <T> T getEnumEntryFromString(T[] enumValues, String value) throws IllegalArgumentException {

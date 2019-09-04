@@ -41,12 +41,13 @@ import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.port.PortType;
 
-import com.continental.knime.xlsformatter.apply.XlsFormatterApplyLogic;
 import com.continental.knime.xlsformatter.commons.TagBasedXlsCellFormatterNodeModel;
 import com.continental.knime.xlsformatter.commons.WarningMessageContainer;
 import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableAnalysisTools;
 import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableValidator;
 import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableValidator.ControlTableType;
+import com.continental.knime.xlsformatter.commons.XlsFormattingStateValidator;
+import com.continental.knime.xlsformatter.commons.XlsFormattingStateValidator.ValidationModes;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterState;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterStateSpec;
 
@@ -59,7 +60,7 @@ public class XlsFormatterBorderFormatterNodeModel extends TagBasedXlsCellFormatt
 	//Input tag string
 	static final String CFGKEY_TAGSTRING = "Tag";
 	static final String DEFAULT_TAGSTRING = "header";
-	final SettingsModelString m_tagstring =
+	final SettingsModelString m_tag =
 			new SettingsModelString(CFGKEY_TAGSTRING, DEFAULT_TAGSTRING);
 
 	static final String CFGKEY_ALL_TAGS = "AllTags";
@@ -69,7 +70,7 @@ public class XlsFormatterBorderFormatterNodeModel extends TagBasedXlsCellFormatt
 
 	static final String CFGKEY_BORDER_STYLE = "BorderStyle";
 	static final String DEFAULT_BORDER_STYLE = XlsFormatterState.BorderStyle.NORMAL.toString().toLowerCase();
-	final SettingsModelString m_borderstyle =
+	final SettingsModelString m_borderStyle =
 			new SettingsModelString(CFGKEY_BORDER_STYLE, DEFAULT_BORDER_STYLE);
 
 	static final String CFGKEY_BORDER_CHANGECOLOR = "ChangeBorderColor";
@@ -142,18 +143,18 @@ public class XlsFormatterBorderFormatterNodeModel extends TagBasedXlsCellFormatt
 		}
 		else {
 			List<CellAddress> targetCells =
-					XlsFormatterControlTableAnalysisTools.getCellsMatchingTag((BufferedDataTable)inObjects[0], m_tagstring.getStringValue().trim(), exec, logger);
-			warnOnNoMatchingTags(targetCells, m_tagstring.getStringValue().trim());
+					XlsFormatterControlTableAnalysisTools.getCellsMatchingTag((BufferedDataTable)inObjects[0], m_tag.getStringValue().trim(), exec, logger);
+			warnOnNoMatchingTags(targetCells, m_tag.getStringValue().trim());
 			passes = new ArrayList<List<CellAddress>>();
 			passes.add(targetCells); // just 1 pass in this case
 		}
 
 		for (List<CellAddress> pass : passes) {
 			XlsFormatterBorderFormatterLogic borderLogic = new XlsFormatterBorderFormatterLogic(
-					xlsf.cells,
+					xlsf.getCurrentSheetStateForModification().cells,
 					pass,
 					new XlsFormatterState.BorderEdge(
-							XlsFormatterState.BorderStyle.valueOf(m_borderstyle.getStringValue().toUpperCase()),
+							XlsFormatterState.BorderStyle.valueOf(m_borderStyle.getStringValue().toUpperCase()),
 							m_borderChangeColor.getBooleanValue() ? m_borderColor.getColorValue() : null));
 	
 			borderLogic.implementBordersMatchingTagsInMap(
@@ -167,7 +168,7 @@ public class XlsFormatterBorderFormatterNodeModel extends TagBasedXlsCellFormatt
 		}
 
 		WarningMessageContainer warningMessageContainer = new WarningMessageContainer(); 
-		XlsFormatterApplyLogic.checkDerivedStyleComplexity(xlsf, warningMessageContainer, exec, logger);
+		XlsFormattingStateValidator.validateState(xlsf, ValidationModes.STYLES, warningMessageContainer, exec, logger);
 		if (warningMessageContainer.hasMessage())
 			setWarningMessage(warningMessageContainer.getMessage());
 			
@@ -181,9 +182,6 @@ public class XlsFormatterBorderFormatterNodeModel extends TagBasedXlsCellFormatt
 
 		if (!XlsFormatterControlTableValidator.isControlTableSpec((DataTableSpec)inSpecs[0], ControlTableType.STRING_WITHOUT_CONTENT_CHECK, logger))
 			throw new InvalidSettingsException("The configured input table header is not that of a valid XLS Formatting control table. See log for details.");
-
-		if (inSpecs[1] != null && ((XlsFormatterStateSpec)inSpecs[1]).getContainsMergeInstruction() == true)
-			throw new InvalidSettingsException("No futher XLS Formatting nodes allowed after Cell Merger.");
 
 		return new PortObjectSpec[] { inSpecs[1] == null ? XlsFormatterStateSpec.getEmptySpec() : ((XlsFormatterStateSpec)inSpecs[1]).getCopy() };
 	}
@@ -203,9 +201,9 @@ public class XlsFormatterBorderFormatterNodeModel extends TagBasedXlsCellFormatt
 
 		m_borderColor.setEnabled(m_borderChangeColor.getBooleanValue());
 
-		m_tagstring.saveSettingsTo(settings);
+		m_tag.saveSettingsTo(settings);
 		m_allTags.saveSettingsTo(settings);
-		m_borderstyle.saveSettingsTo(settings);
+		m_borderStyle.saveSettingsTo(settings);
 		m_borderTop.saveSettingsTo(settings);
 		m_borderBottom.saveSettingsTo(settings);
 		m_borderLeft.saveSettingsTo(settings);
@@ -224,9 +222,9 @@ public class XlsFormatterBorderFormatterNodeModel extends TagBasedXlsCellFormatt
 	protected void loadValidatedSettingsFrom(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 
-		m_tagstring.loadSettingsFrom(settings);
+		m_tag.loadSettingsFrom(settings);
 		m_allTags.loadSettingsFrom(settings);
-		m_borderstyle.loadSettingsFrom(settings);
+		m_borderStyle.loadSettingsFrom(settings);
 		m_borderTop.loadSettingsFrom(settings);
 		m_borderBottom.loadSettingsFrom(settings);
 		m_borderLeft.loadSettingsFrom(settings);
@@ -245,9 +243,9 @@ public class XlsFormatterBorderFormatterNodeModel extends TagBasedXlsCellFormatt
 	protected void validateSettings(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 
-		m_tagstring.validateSettings(settings);
+		m_tag.validateSettings(settings);
 		m_allTags.validateSettings(settings);
-		m_borderstyle.validateSettings(settings);
+		m_borderStyle.validateSettings(settings);
 		m_borderTop.validateSettings(settings);
 		m_borderBottom.validateSettings(settings);
 		m_borderLeft.validateSettings(settings);

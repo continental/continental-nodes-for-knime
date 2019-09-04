@@ -21,6 +21,7 @@ package com.continental.knime.xlsformatter.commons;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,16 +30,28 @@ import java.util.stream.Collectors;
 import org.apache.poi.ss.util.CellAddress;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.knime.core.data.DataCell;
+import org.knime.core.data.DataColumnSpec;
 import org.knime.core.data.DataRow;
 import org.knime.core.data.DataTableSpec;
 import org.knime.core.data.DoubleValue;
 import org.knime.core.data.def.DoubleCell;
+import org.knime.core.data.def.IntCell;
+import org.knime.core.data.def.StringCell;
 import org.knime.core.node.BufferedDataTable;
 import org.knime.core.node.ExecutionContext;
 import org.knime.core.node.NodeLogger;
 
 public class XlsFormatterControlTableAnalysisTools {
 
+	/**
+	 * This threshold sets the warning level, from which on isLongControlTableSpec will output a warning via
+	 * its warningMessageContainer. If equal or more columns are detected in the input table that are also
+	 * expected in the extended long/unpivoted spec, the warning is given. The warning is also given, if
+	 * all columns (irrespective of type) of the standard (not extended) option are present.
+	 */
+	private final static int LONG_CONTROL_TABLE_COLUMN_COUNT_WARNING_THRESHOLD = 5;
+	
+	
 	/**
 	 * Determines whether a spec could be that of a double-typed control table (based on the first column's data
 	 * type only). Integer columns still qualify as candidate.
@@ -47,6 +60,104 @@ public class XlsFormatterControlTableAnalysisTools {
 		if (spec.getNumColumns() == 0)
 			return false; 
 		return spec.getColumnSpec(0).getType().isCompatible(DoubleValue.class);
+	}
+	
+	/**
+	 * Determines whether the incoming data table spec matches that created by the XLS Control Table Generator's
+	 * unpivot option.
+	 * Column name and type must match, no additional columns are allowed, but the column and row order may be incorrect.
+	 * Returns -1 if the spec is not a long control table or the number of columns (3 for standard, 8 for extended), if so.
+	 * Warns if it is deemed likely that the user actually intended this to be a long control table spec.
+	 */
+	public static int isLongControlTableSpec(DataTableSpec spec, WarningMessageContainer warningMessageContainer, NodeLogger logger) {
+		
+		int countOfFoundStandardColumnNames = 0;
+		int countOfFoundExtendedColumnNames = 0;
+		String failureReason = null; // non null means there was a failure
+		boolean includesExtendedColumn = false; // used to keep track if in 3 column mode, one of these is an extended instead of standard one
+		
+		// look for failures:
+		int columnCount = spec.getNumColumns();
+		if (columnCount != 3 && columnCount != 8)
+			failureReason = printReasonToDebugLog("Only the exact 3 or 8 columns are allowed that were originally produced by a previous XLS Control Table Generator node's unpivot feature.", failureReason, logger);
+		
+		for (int i = 0; i < columnCount; i++) {
+			DataColumnSpec colSpec = spec.getColumnSpec(i);
+			Class<? extends DataCell> colClass = colSpec.getType().getCellClass();
+			
+			switch (colSpec.getName()) {
+			case "Column":
+				countOfFoundStandardColumnNames++;
+				countOfFoundExtendedColumnNames++;
+				if (!colClass.equals(StringCell.class))
+					failureReason = printReasonToDebugLog("\"Column\" must be of type String", failureReason, logger);
+				break;
+			case "Row":
+				countOfFoundStandardColumnNames++;
+				countOfFoundExtendedColumnNames++;
+				if (!colClass.equals(IntCell.class))
+					failureReason = printReasonToDebugLog("\"Row\" must be of type Integer", failureReason, logger);
+				break;
+			case "Value":
+				countOfFoundStandardColumnNames++;
+				countOfFoundExtendedColumnNames++;
+				if (!colClass.equals(StringCell.class))
+					failureReason = printReasonToDebugLog("\"Value\" must be of type String", failureReason, logger);
+				break;
+			case "Cell":
+				includesExtendedColumn = true;
+				countOfFoundExtendedColumnNames++;
+				if (!colClass.equals(StringCell.class))
+					failureReason = printReasonToDebugLog("\"Cell\" must be of type String", failureReason, logger);
+				break;
+			case "Column (comparable)":
+				includesExtendedColumn = true;
+				countOfFoundExtendedColumnNames++;
+				if (!colClass.equals(StringCell.class))
+					failureReason = printReasonToDebugLog("\"Column (comparable)\" must be of type String", failureReason, logger);
+				break;
+			case "Column (number)":
+				includesExtendedColumn = true;
+				countOfFoundExtendedColumnNames++;
+				if (!colClass.equals(IntCell.class))
+					failureReason = printReasonToDebugLog("\"Column (number)\" must be of type Integer", failureReason, logger);
+				break;
+			case "Column name":
+				includesExtendedColumn = true;
+				countOfFoundExtendedColumnNames++;
+				if (!colClass.equals(StringCell.class))
+					failureReason = printReasonToDebugLog("\"Column name\" must be of type String", failureReason, logger);
+				break;
+			case "RowID":
+				includesExtendedColumn = true;
+				countOfFoundExtendedColumnNames++;
+				if (!colClass.equals(StringCell.class))
+					failureReason = printReasonToDebugLog("\"RowID\" must be of type String", failureReason, logger);
+				break;
+			default: // if a differently named column is encountered, this is not the kind of table spec we are looking for
+				failureReason = printReasonToDebugLog("Additional column \"" + colSpec.getName() + "\" is not allowed, only the 3 or 8 ones created by XLS Control Table Generator in unpivot mode.", failureReason, logger);
+			}
+		}
+		
+		if (columnCount == 3 && includesExtendedColumn)
+			failureReason = printReasonToDebugLog("Expected only columns \"Column\", \"Row\", and \"Value\".", failureReason, logger);
+		
+		
+		// post-process found failures:
+		if (failureReason == null) { // no failure found, so this is a valid long/unpivoted table spec
+			logger.debug("Check for long/unpivoted control table detection was positive.");
+			return columnCount;
+		}
+		
+		if (countOfFoundStandardColumnNames == 3 || countOfFoundExtendedColumnNames >= LONG_CONTROL_TABLE_COLUMN_COUNT_WARNING_THRESHOLD)
+			if (warningMessageContainer != null)
+				warningMessageContainer.addMessage("The input table looks like you might have wanted to activate the 'long to wide' operation type, but: " + failureReason + ". See debug log for all details.");
+		
+		return -1; // because in the end, this is not a 100% compliant long/unpivoted table spec
+	}
+	private static String printReasonToDebugLog(String reason, String previousReason, NodeLogger logger) {
+		logger.debug("Check for long/unpivoted control table detection was negative: " + reason);
+		return previousReason == null ? reason : previousReason;
 	}
 	
 	/**
@@ -125,20 +236,34 @@ public class XlsFormatterControlTableAnalysisTools {
 		return new ArrayList<String>(tags);
 	}
 	
+	public static class CellStringMaps {
+		public Map<CellAddress, String> cellAddressToStringValueMap = new HashMap<CellAddress, String>();
+		public Map<String, List<CellAddress>> stringValueToCellAddressesMap = new HashMap<String, List<CellAddress>>();
+	}
+	
 	/**
-	 * Gets a map of non-null cells and their String values
+	 * Gets a bi-directional mapping of CellAddresses and their String values.
+	 * @param fillStringToCellAddressesMap If false, the returned object's stringValueToCellAddressesMap is not filled for performance reasons.
 	 */
-	public static Map<CellAddress, String> getCellsWithStringValues(
-			final BufferedDataTable dataTable, final ExecutionContext exec, final NodeLogger logger) throws Exception {
+	public static CellStringMaps getCellStringMaps(
+			final BufferedDataTable dataTable, final boolean fillStringToCellAddressesMap, final ExecutionContext exec, final NodeLogger logger) throws Exception {
 		
-		Map<CellAddress, String> ret = new HashMap<CellAddress, String>();
+		CellStringMaps ret = new CellStringMaps();
 		int colCount = dataTable.getSpec().getNumColumns();
 		int r = 0;
 		for (DataRow dataRow : dataTable) {
 			for (int c = 0; c < colCount; c++) {
 				DataCell cell = dataRow.getCell(c);
-				if (cell != null && !cell.isMissing())
-					ret.put(new CellAddress(r, c), cell.toString());
+				if (cell != null && !cell.isMissing()) {
+					CellAddress address = new CellAddress(r, c);
+					String value = cell.toString();
+					ret.cellAddressToStringValueMap.put(address, value);
+					if (fillStringToCellAddressesMap) {
+						if (!ret.stringValueToCellAddressesMap.containsKey(value))
+							ret.stringValueToCellAddressesMap.put(value, new LinkedList<CellAddress>());
+						ret.stringValueToCellAddressesMap.get(value).add(address);
+					}
+				}
 			}
 			r++;
 		}
@@ -277,5 +402,41 @@ public class XlsFormatterControlTableAnalysisTools {
 	
 	private static void throwNonRectangularAreaException(String tag) throws IllegalArgumentException {
 		throw new IllegalArgumentException("Non-rectangular area of tag " + tag + " found in control table.");
+	}
+	
+	
+	/**
+	 * Analyze whether provided targetCells address parts (not fully, and not only the top-left cell) of any
+	 * of the provided ranges. This function is especially useful for checking modifications on previously
+	 * merged ranges.
+	 * @param targetCells A list of cells to modify in a common way. No duplicates allowed in this list.
+	 * @param ranges A list of pre-defined ranges.
+	 * @return null, if no partly overlap was found, or a comma-separated list of the overlapped range(s)
+	 */
+	public static String getOverlappingRanges(List<CellAddress> targetCells, List<CellRangeAddress> ranges,
+			final ExecutionContext exec, final NodeLogger logger) {
+		if (ranges == null || ranges.size() == 0)
+			return null;
+		
+		String ret = null;
+		
+		for (CellRangeAddress range : ranges) {
+			int overlapCount = 0;
+			boolean isTopLeftCellOverlap = false;
+			for (CellAddress cell : targetCells) {
+				isTopLeftCellOverlap |= cell.getColumn() == range.getFirstColumn() && cell.getRow() == range.getFirstRow();
+				if (range.containsColumn(cell.getColumn()) && range.containsRow(cell.getRow()))
+					overlapCount++;
+			}
+			if (overlapCount != 0 && !(overlapCount == 1 && isTopLeftCellOverlap) && overlapCount != range.getNumberOfCells()) {
+				if (ret == null)
+					ret = "";
+				else
+					ret = ret + ", ";
+				ret = ret + range.formatAsString(); 
+			}
+		}
+		
+		return ret;
 	}
 }

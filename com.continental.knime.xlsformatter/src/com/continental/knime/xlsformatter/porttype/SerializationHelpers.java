@@ -22,21 +22,22 @@ import java.awt.Color;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Map;
 
-import org.apache.commons.lang3.tuple.Triple;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.poi.ss.util.CellAddress;
 import org.apache.poi.ss.util.CellRangeAddress;
 
 public class SerializationHelpers {
 
-	public static void writeCellRangeAddress(CellRangeAddress value, ObjectOutput output, long masterSerialVersionUID) throws IOException {
+	public static void writeCellRangeAddress(CellRangeAddress value, ObjectOutput output, int serializationVersion) throws IOException {
 		output.writeInt(value.getFirstRow());
 		output.writeInt(value.getLastRow());
 		output.writeInt(value.getFirstColumn());
 		output.writeInt(value.getLastColumn());
 	}
 	
-	public static CellRangeAddress readCellRangeAddress(ObjectInput input, long masterSerialVersionUID) throws IOException {
+	public static CellRangeAddress readCellRangeAddress(ObjectInput input, int serializationVersion) throws IOException {
 		int[] tempRange = new int[4];
 		for (int i = 0; i < 4; i++)
 			tempRange[i] = input.readInt();
@@ -44,64 +45,64 @@ public class SerializationHelpers {
 	}
 	
 	
-	public static void writeCellAddress(CellAddress value, ObjectOutput output, long masterSerialVersionUID) throws IOException {
+	public static void writeCellAddress(CellAddress value, ObjectOutput output, int serializationVersion) throws IOException {
 		output.writeInt(value.getRow());
 		output.writeInt(value.getColumn());
 	}
 	
-	public static CellAddress readCellAddress(ObjectInput input, long masterSerialVersionUID) throws IOException {
+	public static CellAddress readCellAddress(ObjectInput input, int serializationVersion) throws IOException {
 		int row = input.readInt();
 		return new CellAddress(row, input.readInt()); // row, column
 	}
 	
 	
-	public static void writeNullableInt(Integer value, ObjectOutput output, long masterSerialVersionUID) throws IOException {
+	public static void writeNullableInt(Integer value, ObjectOutput output, int serializationVersion) throws IOException {
 		output.writeBoolean(value != null);
 		if (value != null)
 			output.writeInt(value);
 	}
 	
-	public static Integer readNullableInt(ObjectInput input, long masterSerialVersionUID) throws IOException {
+	public static Integer readNullableInt(ObjectInput input, int serializationVersion) throws IOException {
 		if (input.readBoolean())
 			return input.readInt();
 		return null;
 	}
 	
 	
-	public static void writeNullableString(String value, ObjectOutput output, long masterSerialVersionUID) throws IOException {
+	public static void writeNullableString(String value, ObjectOutput output, int serializationVersion) throws IOException {
 		output.writeBoolean(value != null);
 		if (value != null)
 			output.writeUTF(value);
 	}
 	
-	public static String readNullableString(ObjectInput input, long masterSerialVersionUID) throws IOException {
+	public static String readNullableString(ObjectInput input, int serializationVersion) throws IOException {
 		if (input.readBoolean())
 			return input.readUTF();
 		return null;
 	}
 	
 	
-	public static void writeGroupTriple(Triple<Integer, Integer, Boolean> value, ObjectOutput output, long masterSerialVersionUID) throws IOException {
-		output.writeInt(value.getLeft());
-		output.writeInt(value.getMiddle());
-		output.writeBoolean(value.getRight());
+	public static void writeGroupingEntry(Integer from, Integer to, boolean isCollapsed, ObjectOutput output, int serializationVersion) throws IOException {
+		output.writeInt(from);
+		output.writeInt(to);
+		output.writeBoolean(isCollapsed);
 	}
 	
-	public static Triple<Integer, Integer, Boolean> readGroupTriple(ObjectInput input, long masterSerialVersionUID) throws IOException {
+	public static void addReadGroupingEntryToMap(Map<Pair<Integer, Integer>, Boolean> map, ObjectInput input, int serializationVersion) throws IOException {
 		int from = input.readInt();
 		int to = input.readInt();
 		boolean collapsed = input.readBoolean();
-		return Triple.of(from, to, collapsed);
+		map.put(Pair.of(from, to), collapsed);
 	}
 	
 	
-	public static void writeNullableColor(Color value, ObjectOutput output, long masterSerialVersionUID) throws IOException {
+	public static void writeNullableColor(Color value, ObjectOutput output, int serializationVersion) throws IOException {
 		output.writeBoolean(value != null);
 		if (value != null)
 			output.writeInt(value.getRGB()); // incl. alpha
 	}
 	
-	public static Color readNullableColor(ObjectInput input, long masterSerialVersionUID) throws IOException {
+	public static Color readNullableColor(ObjectInput input, int serializationVersion) throws IOException {
 		if (input.readBoolean())
 			return new Color(input.readInt(), true); // version with alpha as this is also written out
 		return null;

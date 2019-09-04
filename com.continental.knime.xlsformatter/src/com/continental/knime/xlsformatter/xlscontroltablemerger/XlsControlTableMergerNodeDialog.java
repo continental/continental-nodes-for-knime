@@ -32,7 +32,7 @@ public class XlsControlTableMergerNodeDialog extends DefaultNodeSettingsPane {
 
 		String[] modeButtons = XlsFormatterUiOptions.getDropdownArrayFromEnum(Modes.values());
 		addDialogComponent(new DialogComponentButtonGroup(
-				new SettingsModelString(XlsControlTableMergerNodeModel.CFGKEY_MODE_STRING, XlsControlTableMergerNodeModel.DEFAULT_MODE_STRING), 
-				"how to combine second with first table", false, modeButtons, modeButtons));
+				new SettingsModelString(XlsControlTableMergerNodeModel.CFGKEY_MODE, XlsControlTableMergerNodeModel.DEFAULT_MODE), 
+				"combine mode", false, modeButtons, modeButtons));
 	}
 }

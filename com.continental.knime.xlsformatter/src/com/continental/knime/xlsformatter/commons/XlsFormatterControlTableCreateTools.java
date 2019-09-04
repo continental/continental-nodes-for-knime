@@ -116,19 +116,22 @@ public class XlsFormatterControlTableCreateTools {
   				if (bottomCell != null && bottomCell.isMissing())
   					bottomCell = null;
   				
-  				if ((topCell == null && bottomCell == null) || 
-  						(overwriteInsteadOfAppend && bottomCell != null && bottomCell.toString().equals(""))) // special deletion command
+  				boolean topCellHasContent = topCell != null && !topCell.toString().trim().equals("");
+  				boolean bottomCellHasContent = bottomCell != null && !bottomCell.toString().trim().equals("");
+  				
+  				if ((!topCellHasContent && !bottomCellHasContent) ||
+  						(overwriteInsteadOfAppend && bottomCell != null && bottomCell.toString().trim().equals(""))) // special deletion command
   					cells[c] = new MissingCell(null);
   				else {
   					String tags;
-  					if (topCell == null || (overwriteInsteadOfAppend && bottomCell != null))
+  					if (!topCellHasContent || (overwriteInsteadOfAppend && bottomCellHasContent))
   						tags = bottomCell.toString();
-  					else if (bottomCell == null)
+  					else if (!bottomCellHasContent)
   						tags = topCell.toString();
   					else
   						tags = topCell.toString() + "," + bottomCell.toString();
   					
-  					cells[c] = new StringCell(removeDuplicateTags(tags));
+  					cells[c] = new StringCell(removeDuplicateTags(tags)); // removeDuplicateTags performs a String.trim() call on each entry 
   				}
   			}
   			

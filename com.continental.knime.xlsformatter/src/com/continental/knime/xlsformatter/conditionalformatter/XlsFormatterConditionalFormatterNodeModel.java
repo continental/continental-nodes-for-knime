@@ -44,6 +44,7 @@ import org.knime.core.node.port.PortType;
 
 import com.continental.knime.xlsformatter.commons.AddressingTools;
 import com.continental.knime.xlsformatter.commons.TagBasedXlsCellFormatterNodeModel;
+import com.continental.knime.xlsformatter.commons.WarningMessageContainer;
 import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableAnalysisTools;
 import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableValidator;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterState;
@@ -57,45 +58,45 @@ public class XlsFormatterConditionalFormatterNodeModel extends TagBasedXlsCellFo
 			.getLogger(XlsFormatterConditionalFormatterNodeModel.class);
 
 	//Input tag string
-	static final String CFGKEY_TAGSTRING = "Tag";
-	static final String DEFAULT_TAGSTRING = "header";
-	final SettingsModelString m_tagstring =
-			new SettingsModelString(CFGKEY_TAGSTRING,DEFAULT_TAGSTRING);
+	static final String CFGKEY_TAG = "Tag";
+	static final String DEFAULT_TAG = "header";
+	final SettingsModelString m_tag =
+			new SettingsModelString(CFGKEY_TAG, DEFAULT_TAG);
 
-	static final String CFGKEY_MIDSCALEPOINT_ON = "MidScalePointOn";
-	static final boolean DEFAULT_MIDSCALEPOINT_ON = true;
-	final SettingsModelBoolean m_midscalepointon =
-			new SettingsModelBoolean(CFGKEY_MIDSCALEPOINT_ON,DEFAULT_MIDSCALEPOINT_ON);
+	static final String CFGKEY_MIDSCALEPOINT_ACTIVE = "MidScalePointOn";
+	static final boolean DEFAULT_MIDSCALEPOINT_ACTIVE = true;
+	final SettingsModelBoolean m_midScalePointActive =
+			new SettingsModelBoolean(CFGKEY_MIDSCALEPOINT_ACTIVE, DEFAULT_MIDSCALEPOINT_ACTIVE);
 
-	static final String CFGKEY_MIN_VALUE = "MinValue";
-	static final double DEFAULT_MIN_VALUE = 0.0;
-	final SettingsModelDouble m_minvalue =
-			new SettingsModelDouble(CFGKEY_MIN_VALUE,DEFAULT_MIN_VALUE);   
+	static final String CFGKEY_MIN_THRESHOLD = "MinValue";
+	static final double DEFAULT_MIN_THRESHOLD = 0.0;
+	final SettingsModelDouble m_minThreshold =
+			new SettingsModelDouble(CFGKEY_MIN_THRESHOLD, DEFAULT_MIN_THRESHOLD);   
 
 	static final String CFGKEY_MIN_COLOR = "MinColor";
-	static final Color DEFAULT_MIN_COLOR = new Color(0,255,0);
-	final SettingsModelColor m_mincolor =
+	static final Color DEFAULT_MIN_COLOR = new Color(0, 255, 0);
+	final SettingsModelColor m_minColor =
 			new SettingsModelColor(CFGKEY_MIN_COLOR,DEFAULT_MIN_COLOR);
 
-	static final String CFGKEY_MID_VALUE = "MidValue";
-	static final double DEFAULT_MID_VALUE = 0.5;
-	final SettingsModelDouble m_midvalue =
-			new SettingsModelDouble(CFGKEY_MID_VALUE,DEFAULT_MID_VALUE);   
+	static final String CFGKEY_MID_THRESHOLD = "MidValue";
+	static final double DEFAULT_MID_THRESHOLD = 0.5;
+	final SettingsModelDouble m_midThreshold =
+			new SettingsModelDouble(CFGKEY_MID_THRESHOLD, DEFAULT_MID_THRESHOLD);   
 
 	static final String CFGKEY_MID_COLOR = "MidColor";
-	static final Color DEFAULT_MID_COLOR = new Color(255,255,0);
-	final SettingsModelColor m_midcolor =
-			new SettingsModelColor(CFGKEY_MID_COLOR,DEFAULT_MID_COLOR);
+	static final Color DEFAULT_MID_COLOR = new Color(255, 255, 0);
+	final SettingsModelColor m_midColor =
+			new SettingsModelColor(CFGKEY_MID_COLOR, DEFAULT_MID_COLOR);
 
-	static final String CFGKEY_MAX_VALUE = "MaxValue";
-	static final double DEFAULT_MAX_VALUE = 1.0;
-	final SettingsModelDouble m_maxvalue =
-			new SettingsModelDouble(CFGKEY_MAX_VALUE,DEFAULT_MAX_VALUE);   
+	static final String CFGKEY_MAX_THRESHOLD = "MaxValue";
+	static final double DEFAULT_MAX_THRESHOLD = 1.0;
+	final SettingsModelDouble m_maxThreshold =
+			new SettingsModelDouble(CFGKEY_MAX_THRESHOLD, DEFAULT_MAX_THRESHOLD);   
 
 	static final String CFGKEY_MAX_COLOR = "MaxColor";
-	static final Color DEFAULT_MAX_COLOR = new Color(255,0,0);
-	final SettingsModelColor m_maxcolor =
-			new SettingsModelColor(CFGKEY_MAX_COLOR,DEFAULT_MAX_COLOR);
+	static final Color DEFAULT_MAX_COLOR = new Color(255, 0, 0);
+	final SettingsModelColor m_maxColor =
+			new SettingsModelColor(CFGKEY_MAX_COLOR, DEFAULT_MAX_COLOR);
 
 	/**
 	 * Constructor for the node model.
@@ -117,23 +118,33 @@ public class XlsFormatterConditionalFormatterNodeModel extends TagBasedXlsCellFo
 			throw new IllegalArgumentException("The provided input table is not a valid XLS control table. See log for details.");
 
 		XlsFormatterState xlsf = XlsFormatterState.getDeepClone(inObjects[1]);
+		XlsFormatterState.SheetState xlsfs = xlsf.getCurrentSheetStateForModification();
+		WarningMessageContainer warningMessageContainer = new WarningMessageContainer();
 
 		List<CellAddress> targetCells =
-				XlsFormatterControlTableAnalysisTools.getCellsMatchingTag((BufferedDataTable)inObjects[0], m_tagstring.getStringValue().trim(), exec, logger);
-		warnOnNoMatchingTags(targetCells, m_tagstring.getStringValue().trim());
+				XlsFormatterControlTableAnalysisTools.getCellsMatchingTag((BufferedDataTable)inObjects[0], m_tag.getStringValue().trim(), exec, logger);
+		warnOnNoMatchingTags(targetCells, m_tag.getStringValue().trim(), warningMessageContainer);
 
+		// check for a partly overlap of these target cells with a previously merged range and warn
+		String mergeOverlapRanges = XlsFormatterControlTableAnalysisTools.getOverlappingRanges(targetCells, xlsfs.mergeRanges, exec, logger);
+		if (mergeOverlapRanges != null)
+			warningMessageContainer.addMessage("Modification on parts of previously merged range(s) (" + mergeOverlapRanges + ") will have no effect.");
+		
 		// translate UI conditional format definition to internal representation:
 		ConditionalFormattingSet condFormatSet = new ConditionalFormattingSet();
-		condFormatSet.backgroundScaleFixpoints.add(Pair.of(m_minvalue.getDoubleValue(), m_mincolor.getColorValue()));
-		if (m_midscalepointon.getBooleanValue())
-			condFormatSet.backgroundScaleFixpoints.add(Pair.of(m_midvalue.getDoubleValue(), m_midcolor.getColorValue()));
-		condFormatSet.backgroundScaleFixpoints.add(Pair.of(m_maxvalue.getDoubleValue(), m_maxcolor.getColorValue()));
+		condFormatSet.backgroundScaleFixpoints.add(Pair.of(m_minThreshold.getDoubleValue(), m_minColor.getColorValue()));
+		if (m_midScalePointActive.getBooleanValue())
+			condFormatSet.backgroundScaleFixpoints.add(Pair.of(m_midThreshold.getDoubleValue(), m_midColor.getColorValue()));
+		condFormatSet.backgroundScaleFixpoints.add(Pair.of(m_maxThreshold.getDoubleValue(), m_maxColor.getColorValue()));
 		
 		
 		for (CellAddress cell : targetCells) {
-			XlsFormatterState.CellState cellState = AddressingTools.safelyGetCellInMap(xlsf.cells, cell);
+			XlsFormatterState.CellState cellState = AddressingTools.safelyGetCellInMap(xlsfs.cells, cell);
 			cellState.conditionalFormat = condFormatSet; // note that we share the ConditionalFormattingSet object here across cells!
 		}
+		
+		if (warningMessageContainer.hasMessage())
+			setWarningMessage(warningMessageContainer.getMessage());
 		
 		return new PortObject[] { xlsf };
 	}
@@ -144,9 +155,6 @@ public class XlsFormatterConditionalFormatterNodeModel extends TagBasedXlsCellFo
 
 		if (!XlsFormatterControlTableValidator.isControlTableSpec((DataTableSpec)inSpecs[0], logger))
 			throw new InvalidSettingsException("The configured input table header is not that of a valid XLS Formatting control table. See log for details.");
-
-		if (inSpecs[1] != null && ((XlsFormatterStateSpec)inSpecs[1]).getContainsMergeInstruction() == true)
-			throw new InvalidSettingsException("No futher XLS Formatting nodes allowed after Cell Merger.");
 
 		return new PortObjectSpec[] { inSpecs[1] == null ? XlsFormatterStateSpec.getEmptySpec() : ((XlsFormatterStateSpec)inSpecs[1]).getCopy() };
 	}
@@ -164,14 +172,14 @@ public class XlsFormatterConditionalFormatterNodeModel extends TagBasedXlsCellFo
 	@Override
 	protected void saveSettingsTo(final NodeSettingsWO settings) {
 
-		m_tagstring.saveSettingsTo(settings);
-		m_midscalepointon.saveSettingsTo(settings);
-		m_minvalue.saveSettingsTo(settings);
-		m_mincolor.saveSettingsTo(settings);
-		m_midvalue.saveSettingsTo(settings);
-		m_midcolor.saveSettingsTo(settings);
-		m_maxvalue.saveSettingsTo(settings);
-		m_maxcolor.saveSettingsTo(settings);
+		m_tag.saveSettingsTo(settings);
+		m_midScalePointActive.saveSettingsTo(settings);
+		m_minThreshold.saveSettingsTo(settings);
+		m_minColor.saveSettingsTo(settings);
+		m_midThreshold.saveSettingsTo(settings);
+		m_midColor.saveSettingsTo(settings);
+		m_maxThreshold.saveSettingsTo(settings);
+		m_maxColor.saveSettingsTo(settings);
 	}
 
 	/**
@@ -181,14 +189,14 @@ public class XlsFormatterConditionalFormatterNodeModel extends TagBasedXlsCellFo
 	protected void loadValidatedSettingsFrom(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 
-		m_tagstring.loadSettingsFrom(settings);
-		m_midscalepointon.loadSettingsFrom(settings);
-		m_minvalue.loadSettingsFrom(settings);
-		m_mincolor.loadSettingsFrom(settings);
-		m_midvalue.loadSettingsFrom(settings);
-		m_midcolor.loadSettingsFrom(settings);
-		m_maxvalue.loadSettingsFrom(settings);
-		m_maxcolor.loadSettingsFrom(settings);
+		m_tag.loadSettingsFrom(settings);
+		m_midScalePointActive.loadSettingsFrom(settings);
+		m_minThreshold.loadSettingsFrom(settings);
+		m_minColor.loadSettingsFrom(settings);
+		m_midThreshold.loadSettingsFrom(settings);
+		m_midColor.loadSettingsFrom(settings);
+		m_maxThreshold.loadSettingsFrom(settings);
+		m_maxColor.loadSettingsFrom(settings);
 	}
 
 	/**
@@ -198,14 +206,14 @@ public class XlsFormatterConditionalFormatterNodeModel extends TagBasedXlsCellFo
 	protected void validateSettings(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 
-		m_tagstring.validateSettings(settings);
-		m_midscalepointon.validateSettings(settings);
-		m_minvalue.validateSettings(settings);
-		m_mincolor.validateSettings(settings);
-		m_midvalue.validateSettings(settings);
-		m_midcolor.validateSettings(settings);
-		m_maxvalue.validateSettings(settings);
-		m_maxcolor.validateSettings(settings);
+		m_tag.validateSettings(settings);
+		m_midScalePointActive.validateSettings(settings);
+		m_minThreshold.validateSettings(settings);
+		m_minColor.validateSettings(settings);
+		m_midThreshold.validateSettings(settings);
+		m_midColor.validateSettings(settings);
+		m_maxThreshold.validateSettings(settings);
+		m_maxColor.validateSettings(settings);
 	}
 
 	/**

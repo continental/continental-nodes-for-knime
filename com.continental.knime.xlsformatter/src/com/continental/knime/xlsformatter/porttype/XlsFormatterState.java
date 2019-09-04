@@ -41,7 +41,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.poi.ss.util.CellAddress;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellReference;
@@ -50,17 +49,19 @@ import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.port.PortType;
 import org.knime.core.node.port.PortTypeRegistry;
 
+import com.continental.knime.xlsformatter.apply.XlsFormatterApplyLogic;
 import com.continental.knime.xlsformatter.commons.ColorTools;
+import com.continental.knime.xlsformatter.commons.Commons;
 
+// NOTE: changes to the state class (e.g. new fields) must also be reflected in XlsFormatterStateMerger
 
 public class XlsFormatterState implements PortObject, Externalizable {
 
 	/**
 	 * A threshold value of how many cells are to be included in a String representation of a XlsFormatterState.
-	 * Since performance on real-life cases with thousands of formatted cells would be too low, a cut-off
-	 * value of 200 is recommended. 
+	 * Performance on real-life cases with thousands of formatted cells would be too low.
 	 */
-	public static int VIEW_CELLS_THRESHOLD = 200;
+	public static int VIEW_CELLS_THRESHOLD = 100;
 	
 	public static final PortType TYPE = PortTypeRegistry.getInstance().getPortType(XlsFormatterState.class);
 	public static final PortType TYPE_OPTIONAL = PortTypeRegistry.getInstance().getPortType(XlsFormatterState.class, true);
@@ -155,6 +156,28 @@ public class XlsFormatterState implements PortObject, Externalizable {
 	}
 	
 	/**
+	 * An instruction set for adding a cell comment.
+	 */
+	public static class Comment {
+		public String author;
+		public String text;
+		
+		public static Comment readFromExternal(ObjectInput input, int serializationVersion) throws IOException, ClassNotFoundException {
+			Comment ret = new Comment();
+			input.readInt(); // placeholder for future type implementations
+			ret.author = SerializationHelpers.readNullableString(input, serializationVersion);
+			ret.text = SerializationHelpers.readNullableString(input, serializationVersion);
+			return ret;
+		}
+
+		public void writeExternal(ObjectOutput output, int serializationVersion) throws IOException {
+			output.writeInt(0); // placeholder for future type implementations (0 being default)
+			SerializationHelpers.writeNullableString(author, output, serializationVersion);
+			SerializationHelpers.writeNullableString(text, output, serializationVersion);
+		}
+	}
+	
+	/**
 	 * An instruction set for conditional formatting, which is re-used over multiple cells by associating it to cell ranges.
 	 */
 	public static class ConditionalFormattingSet {
@@ -179,29 +202,31 @@ public class XlsFormatterState implements PortObject, Externalizable {
 			return sb.toString();
 		}
 		
-		public static ConditionalFormattingSet readFromExternal(ObjectInput input, long masterSerialVersionUID) throws IOException, ClassNotFoundException {
+		public static ConditionalFormattingSet readFromExternal(ObjectInput input, int serializationVersion) throws IOException, ClassNotFoundException {
 			int tempSize = input.readInt();
 			ConditionalFormattingSet ret = new ConditionalFormattingSet();
 			ret.backgroundScaleFixpoints = new ArrayList<Pair<Double, Color>>(tempSize);
 			for (int i = 0; i < tempSize; i++) {
 				double step = input.readDouble();
-				Color color = SerializationHelpers.readNullableColor(input, masterSerialVersionUID);
+				Color color = SerializationHelpers.readNullableColor(input, serializationVersion);
 				ret.backgroundScaleFixpoints.add(Pair.of(step, color));
 			}
 			return ret;
 		}
 
-		public void writeExternal(ObjectOutput output, long masterSerialVersionUID) throws IOException {
+		public void writeExternal(ObjectOutput output, int serializationVersion) throws IOException {
 			output.writeInt(backgroundScaleFixpoints.size());
 			for (Pair<Double, Color> pair : backgroundScaleFixpoints) {
 				output.writeDouble(pair.getLeft());
-				SerializationHelpers.writeNullableColor(pair.getRight(), output, masterSerialVersionUID);
+				SerializationHelpers.writeNullableColor(pair.getRight(), output, serializationVersion);
 			}
 		}
 	}
 	
 	/**
-	 * Formatting instructions of one edge of one cell's border
+	 * Formatting instructions of one edge of one cell's border.
+	 * Style and color are independent of each other, meaning that even with unmodified style
+	 * but defined color, the apply logic will implement this change in POI.
 	 */
 	public static class BorderEdge {
 		
@@ -236,7 +261,21 @@ public class XlsFormatterState implements PortObject, Externalizable {
 				color = overwritingEdge.color;
 		}
 		
-		public static BorderEdge readFromExternal(ObjectInput input, long masterSerialVersionUID) throws IOException, ClassNotFoundException {
+		/**
+		 * Merges two border edges. In case of conflicting information, master wins.
+		 * No cloning is performed, so make sure that the slave's color object can
+		 * safely be pointed to from within master.
+		 */
+		public static void merge(BorderEdge master, BorderEdge slave) {
+			if (master != null && slave != null) {
+				if (master.style == BorderStyle.UNMODIFIED)
+					master.style = slave.style;
+				if (master.color == null)
+					master.color = slave.color;
+			}
+		}
+		
+		public static BorderEdge readFromExternal(ObjectInput input, int serializationVersion) throws IOException, ClassNotFoundException {
 			BorderStyle style;
 			switch (input.readByte()) {
 				case 1:
@@ -265,11 +304,11 @@ public class XlsFormatterState implements PortObject, Externalizable {
 					style = BorderStyle.UNMODIFIED;
 					break;
 			}
-			Color color = SerializationHelpers.readNullableColor(input, masterSerialVersionUID);
+			Color color = SerializationHelpers.readNullableColor(input, serializationVersion);
 			return new BorderEdge(style, color);
 		}
 
-		public void writeExternal(ObjectOutput output, long masterSerialVersionUID) throws IOException {
+		public void writeExternal(ObjectOutput output, int serializationVersion) throws IOException {
 			switch (style) {
 				case NONE:
 					output.writeByte(1);
@@ -296,7 +335,7 @@ public class XlsFormatterState implements PortObject, Externalizable {
 				default:
 					output.writeByte(0);
 			}
-			SerializationHelpers.writeNullableColor(color, output, masterSerialVersionUID);
+			SerializationHelpers.writeNullableColor(color, output, serializationVersion);
 		}
 	}
 	
@@ -368,6 +407,12 @@ public class XlsFormatterState implements PortObject, Externalizable {
 		public String hyperlink = null;
 		
 		/**
+		 * A comment that shall be added to a cell.
+		 * Note that comments are irrelevant for unique POI style derivation.
+		 */
+		public Comment comment = null;
+		
+		/**
 		 * Transform this cell's font specification to String in order to later on match equal fonts to generate only a joint Font object in POI
 		 */
 		public String fontDefinitionToShortString() {
@@ -385,8 +430,9 @@ public class XlsFormatterState implements PortObject, Externalizable {
 		 * Makes use of shared Font specification internally already.
 		 * This function is only used during computation and its results are never serialized. Hence it may differ between versions.
 		 * @param restrictToPoiStyleRelevantProperties If true, only information is included which leads to a POI style being necessary. If false, all cell state information is included. 
+		 * @param includeBorderFormatting If false, border formatting is excluded (typical use case is around cell merging functions, where border information can be different per cell of a merged range, all other properties should be the same)
 		 */
-		public String cellFormatToShortString(boolean restrictToPoiStyleRelevantProperties) {
+		public String cellFormatToShortString(boolean restrictToPoiStyleRelevantProperties, boolean includeBorderFormatting) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("font:");
 			sb.append(fontDefinitionToShortString());
@@ -409,16 +455,22 @@ public class XlsFormatterState implements PortObject, Externalizable {
 					"/" : resolveEnumUnmodified(cellDataType.toString()));
 			sb.append(";nf:");
 			sb.append(textFormat == null ? "-" : textFormat);
-			sb.append(";borders:T:");
-			sb.append(borderTop == null ? "-;" : borderTop.toString());
-			sb.append("B:");
-			sb.append(borderBottom == null ? "-;" : borderBottom.toString());
-			sb.append("L:");
-			sb.append(borderLeft == null ? "-;" : borderLeft.toString());
-			sb.append("R:");
-			sb.append(borderRight == null ? "-;" : borderRight.toString());
+			if (includeBorderFormatting) {
+				sb.append(";borders:T:");
+				sb.append(borderTop == null ? "-;" : borderTop.toString());
+				sb.append("B:");
+				sb.append(borderBottom == null ? "-;" : borderBottom.toString());
+				sb.append("L:");
+				sb.append(borderLeft == null ? "-;" : borderLeft.toString());
+				sb.append("R:");
+				sb.append(borderRight == null ? "-;" : borderRight.toString());
+			}
 			if (!restrictToPoiStyleRelevantProperties) {
 				sb.append(conditionalFormat == null ? "cf:-" : conditionalFormat.toString());
+				sb.append(";cmnt:");
+				sb.append(comment == null ? "-" : "\"" + comment.author + "\":\"" + comment.text + "\"");
+				sb.append(";hl:");
+				sb.append(hyperlink == null ? "-" : "\"" + hyperlink + "\"");
 			}
 			return sb.toString();
 		}
@@ -431,7 +483,7 @@ public class XlsFormatterState implements PortObject, Externalizable {
 		 */
 		public static String getNonFormattingStateString() {
 			if (nonFormattingStateString == null)
-				nonFormattingStateString = (new CellState()).cellFormatToShortString(true); 
+				nonFormattingStateString = (new CellState()).cellFormatToShortString(true, true); 
 			return nonFormattingStateString;
 		}
 		
@@ -458,13 +510,13 @@ public class XlsFormatterState implements PortObject, Externalizable {
 			}
 		}
 
-		public static CellState readFromExternal(ObjectInput input, long masterSerialVersionUID) throws IOException, ClassNotFoundException {
+		public static CellState readFromExternal(ObjectInput input, int serializationVersion) throws IOException, ClassNotFoundException {
 			CellState ret = new CellState();
-			ret.fontSize = SerializationHelpers.readNullableInt(input, masterSerialVersionUID);
+			ret.fontSize = SerializationHelpers.readNullableInt(input, serializationVersion);
 			ret.fontBold = getFormattingFlagFromSerializedByte(input.readByte());
 			ret.fontItalic = getFormattingFlagFromSerializedByte(input.readByte());
 			ret.fontUnderline = getFormattingFlagFromSerializedByte(input.readByte());
-			ret.fontColor = SerializationHelpers.readNullableColor(input, masterSerialVersionUID);
+			ret.fontColor = SerializationHelpers.readNullableColor(input, serializationVersion);
 			ret.wrapText = getFormattingFlagFromSerializedByte(input.readByte());
 			byte cellHorizontalAlignmentByte = input.readByte();
 			switch (cellHorizontalAlignmentByte) {
@@ -526,26 +578,29 @@ public class XlsFormatterState implements PortObject, Externalizable {
 				ret.fillPattern = FillPattern.UNMODIFIED;
 				break;
 			}
-			ret.textTiltDegree = SerializationHelpers.readNullableInt(input, masterSerialVersionUID);
-			ret.backgroundColor = SerializationHelpers.readNullableColor(input, masterSerialVersionUID);
-			ret.fillForegroundColor = SerializationHelpers.readNullableColor(input, masterSerialVersionUID);
-			ret.textFormat = SerializationHelpers.readNullableString(input, masterSerialVersionUID);
-			ret.hyperlink = SerializationHelpers.readNullableString(input, masterSerialVersionUID);
+			ret.textTiltDegree = SerializationHelpers.readNullableInt(input, serializationVersion);
+			ret.backgroundColor = SerializationHelpers.readNullableColor(input, serializationVersion);
+			ret.fillForegroundColor = SerializationHelpers.readNullableColor(input, serializationVersion);
+			ret.textFormat = SerializationHelpers.readNullableString(input, serializationVersion);
+			ret.hyperlink = SerializationHelpers.readNullableString(input, serializationVersion);
 			input.readByte(); // placeholder for future hyperlink type implementation, 0 meaning DEFAULT
+			if (serializationVersion >= 2)
+				if (input.readBoolean())
+					ret.comment = Comment.readFromExternal(input, serializationVersion);
 			if (input.readBoolean())
-				ret.conditionalFormat = ConditionalFormattingSet.readFromExternal(input, masterSerialVersionUID);
+				ret.conditionalFormat = ConditionalFormattingSet.readFromExternal(input, serializationVersion);
 			if (input.readBoolean())
-				ret.borderTop = BorderEdge.readFromExternal(input, masterSerialVersionUID);
+				ret.borderTop = BorderEdge.readFromExternal(input, serializationVersion);
 			if (input.readBoolean())
-				ret.borderBottom = BorderEdge.readFromExternal(input, masterSerialVersionUID);
+				ret.borderBottom = BorderEdge.readFromExternal(input, serializationVersion);
 			if (input.readBoolean())
-				ret.borderLeft = BorderEdge.readFromExternal(input, masterSerialVersionUID);
+				ret.borderLeft = BorderEdge.readFromExternal(input, serializationVersion);
 			if (input.readBoolean())
-				ret.borderRight = BorderEdge.readFromExternal(input, masterSerialVersionUID);
+				ret.borderRight = BorderEdge.readFromExternal(input, serializationVersion);
 			if (input.readBoolean())
-				ret.borderDiagonalSlash = BorderEdge.readFromExternal(input, masterSerialVersionUID);
+				ret.borderDiagonalSlash = BorderEdge.readFromExternal(input, serializationVersion);
 			if (input.readBoolean())
-				ret.borderDiagonalBackslash = BorderEdge.readFromExternal(input, masterSerialVersionUID);
+				ret.borderDiagonalBackslash = BorderEdge.readFromExternal(input, serializationVersion);
 			byte dataType = input.readByte();
 			switch (dataType) {
 			case 1:
@@ -576,16 +631,13 @@ public class XlsFormatterState implements PortObject, Externalizable {
 		
 		/**
 		 * Externalized writing method.
-		 * @param output
-		 * @param masterSerialVersionUID
-		 * @throws IOException
 		 */
-		public void writeExternal(ObjectOutput output, long masterSerialVersionUID) throws IOException {
-			SerializationHelpers.writeNullableInt(fontSize, output, masterSerialVersionUID);
+		public void writeExternal(ObjectOutput output, int serializationVersion) throws IOException {
+			SerializationHelpers.writeNullableInt(fontSize, output, serializationVersion);
 			output.writeByte(fontBold == FormattingFlag.UNMODIFIED ? 0 : (fontBold == FormattingFlag.OFF ? 1 : 2));
 			output.writeByte(fontItalic == FormattingFlag.UNMODIFIED ? 0 : (fontItalic == FormattingFlag.OFF ? 1 : 2));
 			output.writeByte(fontUnderline == FormattingFlag.UNMODIFIED ? 0 : (fontUnderline == FormattingFlag.OFF ? 1 : 2));
-			SerializationHelpers.writeNullableColor(fontColor, output, masterSerialVersionUID);
+			SerializationHelpers.writeNullableColor(fontColor, output, serializationVersion);
 			output.writeByte(wrapText == FormattingFlag.UNMODIFIED ? 0 : (wrapText == FormattingFlag.OFF ? 1 : 2));
 			switch (cellHorizontalAlignment) {
 				case LEFT:
@@ -644,21 +696,26 @@ public class XlsFormatterState implements PortObject, Externalizable {
 				output.writeByte(0);
 				break;
 			}
-			SerializationHelpers.writeNullableInt(textTiltDegree, output, masterSerialVersionUID);
-			SerializationHelpers.writeNullableColor(backgroundColor, output, masterSerialVersionUID);
-			SerializationHelpers.writeNullableColor(fillForegroundColor, output, masterSerialVersionUID);
-			SerializationHelpers.writeNullableString(textFormat, output, masterSerialVersionUID);
-			SerializationHelpers.writeNullableString(hyperlink, output, masterSerialVersionUID);
+			SerializationHelpers.writeNullableInt(textTiltDegree, output, serializationVersion);
+			SerializationHelpers.writeNullableColor(backgroundColor, output, serializationVersion);
+			SerializationHelpers.writeNullableColor(fillForegroundColor, output, serializationVersion);
+			SerializationHelpers.writeNullableString(textFormat, output, serializationVersion);
+			
+			SerializationHelpers.writeNullableString(hyperlink, output, serializationVersion);
 			output.writeByte(0); // placeholder for future hyperlink type implementation, 0 meaning DEFAULT
+			
+			output.writeBoolean(comment != null);
+			if (comment != null)
+				comment.writeExternal(output, serializationVersion);
 			
 			output.writeBoolean(conditionalFormat != null);
 			if (conditionalFormat != null)
-				conditionalFormat.writeExternal(output, masterSerialVersionUID);
+				conditionalFormat.writeExternal(output, serializationVersion);
 			
 			for (BorderEdge border : new BorderEdge[] { borderTop, borderBottom, borderLeft, borderRight, borderDiagonalSlash, borderDiagonalBackslash }) {
 				output.writeBoolean(border != null);
 				if (border != null)
-					border.writeExternal(output, masterSerialVersionUID);
+					border.writeExternal(output, serializationVersion);
 			}
 			
 			switch (cellDataType) {
@@ -691,60 +748,94 @@ public class XlsFormatterState implements PortObject, Externalizable {
 	
 	
 	/**
-	 * The serialization ID controlling backward compatibility for future releases.
-	 * It is used as the "one and only" master serial version UID, even for subclasses.
+	 * The serialization UID that must remain constant over releases for the Java Serialization to
+	 * still recognize the same class.
 	 */
 	private static final long serialVersionUID = 1L;
 	
 	/**
-	 * Map of cell address to its internal cell state, holding all cell relevant formatting + additional instructions.
+	 * The serialization version controlling backward compatibility for future releases.
+	 * It is used as the "one and only" master serial version, even for subclasses.
 	 */
-	public Map<CellAddress, CellState> cells = new HashMap<CellAddress, CellState>();
+	private static final int masterSerializationVersion = 2; // see a history of versions in the comment to the writeExternal method below
 	
 	/**
-	 * Cell at whose top left corner the sheet shall be frozen.
+	 * The state of a specific sheet (incl. the CellStates of its cells)
 	 */
-	public CellAddress freezeSheetAtTopLeftCornerOfCell = null;
+	public class SheetState {
+		
+		
+		/**
+		 * Map of cell address to its internal cell state, holding all cell relevant formatting + additional instructions.
+		 */
+		public Map<CellAddress, CellState> cells = new HashMap<CellAddress, CellState>();
+		
+		/**
+		 * Cell at whose top left corner the sheet shall be frozen.
+		 */
+		public CellAddress freezeSheetAtTopLeftCornerOfCell = null;
+		
+		/**
+		 * Cell range that an auto filter shall be applied on (incl. the data part, not only the table header).
+		 */
+		public CellRangeAddress autoFilterRange = null;
+		
+		/**
+		 * Map of column index to column width. Null in value means auto-sized column.
+		 */
+		public Map<Integer, Double> columnWidths = new HashMap<Integer, Double>();
+		
+		/**
+		 * Map of row index to row height.
+		 */
+		public Map<Integer, Double> rowHeights = new HashMap<Integer, Double>();
+		
+		/**
+		 * Set of row IDs to hide.
+		 */
+		public Set<Integer> hiddenRows = new HashSet<Integer>();
+		
+		/**
+		 * Set of column IDs to hide.
+		 */
+		public Set<Integer> hiddenColumns = new HashSet<Integer>();
+		
+		/**
+		 * Cell ranges to be merged.
+		 */
+		public List<CellRangeAddress> mergeRanges = new ArrayList<CellRangeAddress>();
+		
+		/**
+		 * Map of column groups: <<fromCol, toCol>, isCollapsed>
+		 */
+		public Map<Pair<Integer, Integer>, Boolean> columnGroups = new HashMap<Pair<Integer, Integer>, Boolean>();
+		
+		/**
+		 * Map of row groups: <<fromRow, toRow>, isCollapsed>
+		 */
+		public Map<Pair<Integer, Integer>, Boolean> rowGroups = new HashMap<Pair<Integer, Integer>, Boolean>();
+	
+		/**
+		 * Checks whether this state is empty, meaning all data instruction-storing structures are empty.
+		 */
+		public boolean isEmpty() {
+			return cells.size() == 0 && freezeSheetAtTopLeftCornerOfCell == null && autoFilterRange == null &&
+					rowHeights.size() == 0 && columnWidths.size() == 0 && hiddenRows.size() == 0 && hiddenColumns.size() == 0 &&
+					mergeRanges.size() == 0 && columnGroups.size() == 0 && rowGroups.size() == 0;
+		}
+	}
 	
 	/**
-	 * Cell range that an auto filter shall be applied on (incl. the data part, not only the table header).
+	 * A map relating a sheet name to its SheetState.
+	 * A key of null represents the default sheet (with POI index 0).
 	 */
-	public CellRangeAddress autoFilterRange = null;
+	public Map<String, SheetState> sheetStates = new HashMap<String, SheetState>();
 	
 	/**
-	 * Map of column index to column width. Null in value means auto-sized column.
+	 * The explicitly (or, in case of null, implicitly) selected sheet to be edited in case of formatting nodes adding instructions.
+	 * Only valid in combination with analyzing the sheetStates map (size >= 2 invalidates this field, as then nothing may be added anymore).
 	 */
-	public Map<Integer, Double> columnWidths = new HashMap<Integer, Double>();
-	
-	/**
-	 * Map of row index to row height.
-	 */
-	public Map<Integer, Double> rowHeights = new HashMap<Integer, Double>();
-	
-	/**
-	 * Set of row IDs to hide.
-	 */
-	public Set<Integer> hiddenRows = new HashSet<Integer>();
-	
-	/**
-	 * Set of column IDs to hide.
-	 */
-	public Set<Integer> hiddenColumns = new HashSet<Integer>();
-	
-	/**
-	 * Cell ranges to be merged.
-	 */
-	public List<CellRangeAddress> mergeRanges = new ArrayList<CellRangeAddress>();
-	
-	/**
-	 * List of triples for column groups: fromCol, toCol, isCollapsed
-	 */
-	public List<Triple<Integer, Integer, Boolean>> columnGroups = new ArrayList<Triple<Integer, Integer, Boolean>>();
-	
-	/**
-	 * List of triples for row groups: fromRow, toRow, isCollapsed
-	 */
-	public List<Triple<Integer, Integer, Boolean>> rowGroups = new ArrayList<Triple<Integer, Integer, Boolean>>();
+	private String designatedSheetnameForModifications = null;
 	
 	/**
 	 * XlsFormatterState constructor without any action as all relevant fields are instantiated.
@@ -752,13 +843,60 @@ public class XlsFormatterState implements PortObject, Externalizable {
 	public XlsFormatterState() { }
 	
 	/**
-	 * Checks whether this state is empty, meaning all data instruction-storing structures are empty.
-	 * @return
+	 * Checks whether this sheet state is empty, meaning all data instruction-storing structures are empty.
 	 */
 	public boolean isEmpty() {
-		return cells.size() == 0 && freezeSheetAtTopLeftCornerOfCell == null && autoFilterRange == null &&
-				rowHeights.size() == 0 && columnWidths.size() == 0 && hiddenRows.size() == 0 && hiddenColumns.size() == 0 &&
-				mergeRanges.size() == 0 && columnGroups.size() == 0 && rowGroups.size() == 0;
+		return sheetStates.size() == 0 || !sheetStates.values().stream().filter(s -> !s.isEmpty()).findAny().isPresent(); 
+	}
+	
+	/**
+	 * Returns the sheet state that any additional formatting instructions can be added to.
+	 * Throws an exception if this state is closed for editing (e.g. due to containing >= 2 sheet states).
+	 */
+	public SheetState getCurrentSheetStateForModification() throws Exception {
+		
+		// check whether no sheet definition/selection node has yet prepared a SheetState and do so for the default case here
+		if (sheetStates.size() == 0)
+			sheetStates.put(null, new SheetState());
+		
+		// check whether this state contains already multiple sheet states and is hence closed for editing
+		if (sheetStates.size() >= 2)
+			throw new Exception("This XLS Formatting Port already addresses multiple sheets. Adding further instructions is hence not possible, as it would be undefined which sheet they target.");
+		
+		return sheetStates.get(designatedSheetnameForModifications);
+	}
+	
+	/**
+	 * Sets the sheet that subsequent formatting instructions shall be targeted to.
+	 * Ensures correct internal state (i.e. creating the corresponding map entry of name and a new SheetState).
+	 */
+	public void setCurrentSheetForModification(String sheetName) throws Exception {
+		designatedSheetnameForModifications = sheetName;
+		if (sheetStates.containsKey(sheetName))
+			throw new Exception("Coding issue: The XLS Formatting port shall be pointed to specific sheets only for fresh instances.");
+		sheetStates.put(sheetName, new SheetState());
+	}
+	
+	@Override
+	public String getSummary() {
+		if (isEmpty())
+			return "XLS Formatting port object, yet without formatting instructions";
+		
+		int sheetLevelInstructions = sheetStates.values().stream().mapToInt(s -> {
+			return
+				(s.freezeSheetAtTopLeftCornerOfCell == null ? 0 : 1) +
+				(s.autoFilterRange == null ? 0 : 1) +
+				s.columnWidths.size() +
+				s.rowHeights.size() +
+				s.hiddenRows.size() +
+				s.hiddenColumns.size() +
+				s.mergeRanges.size() +
+				s.columnGroups.size() +
+				s.rowGroups.size();
+			}).sum();
+		return "XLS Formatting port object: " + Commons.resolvePluralString((int)sheetStates.values().stream().filter(s -> !s.isEmpty()).count(), "sheet(s)") + ", " + 
+				Commons.resolvePluralString(sheetStates.values().stream().mapToInt(s -> s.cells.size()).sum(), "cell(s) with instructions") + ", " + 
+				Commons.resolvePluralString(sheetLevelInstructions, "sheet-level instruction(s)");
 	}
 	
 	/**
@@ -766,111 +904,147 @@ public class XlsFormatterState implements PortObject, Externalizable {
 	 */
 	public String toLongString(boolean cutLongText) {
 		StringBuilder sb = new StringBuilder();
-		sb.append("\nfreezeSheetAtTopLeftCornerOfCell: ");
-		sb.append(freezeSheetAtTopLeftCornerOfCell == null ? "-" : freezeSheetAtTopLeftCornerOfCell.toString());
-		sb.append("\nautoFilterRange: ");
-		sb.append(autoFilterRange == null ? "-" : autoFilterRange.formatAsString());
-		sb.append("\nrowHeights: ");
-		for (int i : rowHeights.keySet())
-			sb.append(i + ":" +  rowHeights.get(i));
-		sb.append("\ncolumnWidths: ");
-		for (int i : columnWidths.keySet())
-			sb.append(CellReference.convertNumToColString(i) + ":" + columnWidths.get(i) + " ");
-		sb.append("\nhiddenRows: ");
-		for (int i : hiddenRows)
-			sb.append(i + " ");
-		sb.append("\nhiddenColumns: ");
-		for (int i : hiddenColumns)
-			sb.append(i + " ");
-		sb.append("\nmergeRanges: ");
-		for (CellRangeAddress range : mergeRanges)
-			sb.append(range.formatAsString() + " ");
-		sb.append("\ncolumnGroups: ");
-		for (Triple<Integer, Integer, Boolean> group : columnGroups)
-			sb.append(CellReference.convertNumToColString(group.getLeft()) + ":" + CellReference.convertNumToColString(group.getMiddle()) + "," + (group.getRight() ? "collapsed" : "opened") + " ");
-		sb.append("\nrowGroups: ");
-		for (Triple<Integer, Integer, Boolean> group : columnGroups)
-			sb.append(group.getLeft() + ":" + group.getMiddle() + "," + (group.getRight() ? "collapsed" : "opened") + " ");
-		sb.append("\n");
-		int iteration = 0;
-		for (CellAddress address : cells.keySet()) {
-			sb.append("\n" + address.formatAsString() + ": ");
-			sb.append(cells.get(address).cellFormatToShortString(false));
-			if (iteration++ >= VIEW_CELLS_THRESHOLD) {
-				sb.append("\n[...], " + cells.size() + " total cells with instructions");
-				break;
+		for (String sheetName : sheetStates.keySet()) {
+			sb.append("##### sheet ");
+			sb.append(sheetName == null ? "[default]" : "\"" + sheetName + "\"");
+			sb.append(" #####");
+			SheetState state = sheetStates.get(sheetName);
+			sb.append("\nfreezeSheetAtTopLeftCornerOfCell: ");
+			sb.append(state.freezeSheetAtTopLeftCornerOfCell == null ? "-" : state.freezeSheetAtTopLeftCornerOfCell.toString());
+			sb.append("\nautoFilterRange: ");
+			sb.append(state.autoFilterRange == null ? "-" : state.autoFilterRange.formatAsString());
+			sb.append("\nrowHeights: ");
+			for (int i : state.rowHeights.keySet())
+				sb.append(i + ":" +  state.rowHeights.get(i));
+			sb.append("\ncolumnWidths: ");
+			for (int i : state.columnWidths.keySet())
+				sb.append(CellReference.convertNumToColString(i) + ":" + state.columnWidths.get(i) + " ");
+			sb.append("\nhiddenRows: ");
+			for (int i : state.hiddenRows)
+				sb.append(i + " ");
+			sb.append("\nhiddenColumns: ");
+			for (int i : state.hiddenColumns)
+				sb.append(i + " ");
+			sb.append("\nmergeRanges: ");
+			for (CellRangeAddress range : state.mergeRanges)
+				sb.append(range.formatAsString() + " ");
+			sb.append("\ncolumnGroups: ");
+			for (Map.Entry<Pair<Integer, Integer>, Boolean> group : state.columnGroups.entrySet())
+				sb.append(CellReference.convertNumToColString(group.getKey().getLeft()) + ":" + CellReference.convertNumToColString(group.getKey().getRight()) + "," + (group.getValue() ? "collapsed" : "opened") + " ");
+			sb.append("\nrowGroups: ");
+			for (Map.Entry<Pair<Integer, Integer>, Boolean> group : state.rowGroups.entrySet())
+				sb.append(group.getKey().getLeft() + ":" + group.getKey().getRight() + "," + (group.getValue() ? "collapsed" : "opened") + " ");
+			sb.append("\n");
+			int iteration = 0;
+			for (CellAddress address : state.cells.keySet()) {
+				sb.append("\n" + address.formatAsString() + ": ");
+				sb.append(state.cells.get(address).cellFormatToShortString(false, true));
+				if (iteration++ >= VIEW_CELLS_THRESHOLD && cutLongText) {
+					sb.append("\n[...], " + state.cells.size() + " total cells with instructions");
+					break;
+				}
 			}
+			sb.append("\n\n");
 		}
-		
+		sb.append("\n");
+		sb.append(XlsFormatterApplyLogic.getDerivedStyleComplexityMessage(this, null, null));
 		return sb.toString();
 	}
-	
-
 
 	@Override
 	public void readExternal(ObjectInput input) throws IOException, ClassNotFoundException {
 		int tempSize;
 		int temp;
-		long readSerialVersionUID = input.readLong();
+		int readSerialVersion = (int)input.readLong();
 		
-		// read cells map:
-		tempSize = input.readInt();
-		cells = new HashMap<CellAddress, CellState>(tempSize);
-		for (int i = 0; i < tempSize; i++) {
-			CellAddress address = SerializationHelpers.readCellAddress(input, readSerialVersionUID);
-			cells.put(
-					address,
-					CellState.readFromExternal(input, readSerialVersionUID));
+		// check for cases of unsupported upward compatibility (see explanation below in the writeExternal method comment)
+		int earliestSerializationVersionCapableOfReadingThis = 1; // default 1 because it equals the serialVersionId 1 of the code state that did not write this field itself yet (doesn't matter though since an upward scenario does not exist for v1 not having this logic inbuilt at all)
+		if (readSerialVersion >= 2) // version 1 did not yet have this element
+			earliestSerializationVersionCapableOfReadingThis = input.readInt();
+		
+		if (masterSerializationVersion < readSerialVersion && masterSerializationVersion < earliestSerializationVersionCapableOfReadingThis)
+			throw new ClassNotFoundException("You are trying to read a XLS Formatting state that has been written with a newer version of the extension than the one currently executing. Upward compatibility is not supported. Please update to the newest version.");
+		
+		// read sheet header and loop all sheets
+		int numberOfSheets = 1; // default for v1 is one sheet of name null
+		if (readSerialVersion >= 2) // version 1 did not yet have this element
+			numberOfSheets = input.readInt();
+		
+		for (int iSheet = 0; iSheet < numberOfSheets; iSheet++) {
+			
+			// handle sheet logic of this loop iteration:
+			SheetState sheetState = new SheetState();
+			String sheetName = null;
+			if (readSerialVersion >= 2) // version 1 did not yet have this element
+				sheetName = SerializationHelpers.readNullableString(input, readSerialVersion);
+			if (sheetStates.containsKey(sheetName))
+				throw new IOException("Coding issue: Invalid persisted XLS Formatting state, sheet names must be unique");
+			sheetStates.put(sheetName, sheetState);
+			
+			// read cells map:
+			tempSize = input.readInt();
+			sheetState.cells = new HashMap<CellAddress, CellState>(tempSize);
+			for (int i = 0; i < tempSize; i++) {
+				CellAddress address = SerializationHelpers.readCellAddress(input, readSerialVersion);
+				sheetState.cells.put(
+						address,
+						CellState.readFromExternal(input, readSerialVersion));
+			}
+			
+			if (input.readBoolean())
+				sheetState.freezeSheetAtTopLeftCornerOfCell = SerializationHelpers.readCellAddress(input, readSerialVersion);
+			
+			if (input.readBoolean())
+				sheetState.autoFilterRange = SerializationHelpers.readCellRangeAddress(input, readSerialVersion);
+			
+			tempSize = input.readInt();
+			sheetState.rowHeights = new HashMap<Integer, Double>(tempSize);
+			for (int i = 0; i < tempSize; i++) {
+				temp = input.readInt();
+				sheetState.rowHeights.put(temp, input.readDouble());
+			}
+			
+			tempSize = input.readInt();
+			sheetState.columnWidths = new HashMap<Integer, Double>(tempSize);
+			for (int i = 0; i < tempSize; i++) {
+				temp = input.readInt(); // key, i.e. column index
+				boolean autoSizeColumn = !input.readBoolean();
+				Double columnWidth = null;
+				if (!autoSizeColumn)
+					columnWidth = input.readDouble();
+				sheetState.columnWidths.put(temp, columnWidth);
+			}
+			
+			tempSize = input.readInt();
+			sheetState.hiddenRows = new HashSet<Integer>(tempSize);
+			for (int i = 0; i < tempSize; i++)
+				sheetState.hiddenRows.add(input.readInt());
+			
+			tempSize = input.readInt();
+			sheetState.hiddenColumns = new HashSet<Integer>(tempSize);
+			for (int i = 0; i < tempSize; i++)
+				sheetState.hiddenColumns.add(input.readInt());
+			
+			tempSize = input.readInt();
+			sheetState.mergeRanges = new ArrayList<CellRangeAddress>(tempSize);
+			for (int i = 0; i < tempSize; i++)
+				sheetState.mergeRanges.add(SerializationHelpers.readCellRangeAddress(input, readSerialVersion));
+			
+			tempSize = input.readInt();
+			sheetState.columnGroups = new HashMap<Pair<Integer, Integer>, Boolean>();
+			for (int i = 0; i < tempSize; i++)
+				SerializationHelpers.addReadGroupingEntryToMap(sheetState.columnGroups, input, readSerialVersion);
+			
+			tempSize = input.readInt();
+			sheetState.rowGroups = new HashMap<Pair<Integer, Integer>, Boolean>();
+			for (int i = 0; i < tempSize; i++)
+				SerializationHelpers.addReadGroupingEntryToMap(sheetState.rowGroups, input, readSerialVersion);
 		}
 		
-		if (input.readBoolean())
-			freezeSheetAtTopLeftCornerOfCell = SerializationHelpers.readCellAddress(input, readSerialVersionUID);
-		
-		if (input.readBoolean())
-			autoFilterRange = SerializationHelpers.readCellRangeAddress(input, readSerialVersionUID);
-		
-		tempSize = input.readInt();
-		rowHeights = new HashMap<Integer, Double>(tempSize);
-		for (int i = 0; i < tempSize; i++) {
-			temp = input.readInt();
-			rowHeights.put(temp, input.readDouble());
-		}
-		
-		tempSize = input.readInt();
-		columnWidths = new HashMap<Integer, Double>(tempSize);
-		for (int i = 0; i < tempSize; i++) {
-			temp = input.readInt(); // key, i.e. column index
-			boolean autoSizeColumn = !input.readBoolean();
-			Double columnWidth = null;
-			if (!autoSizeColumn)
-				columnWidth = input.readDouble();
-			columnWidths.put(temp, columnWidth);
-		}
-		
-		tempSize = input.readInt();
-		hiddenRows = new HashSet<Integer>(tempSize);
-		for (int i = 0; i < tempSize; i++)
-			hiddenRows.add(input.readInt());
-		
-		tempSize = input.readInt();
-		hiddenColumns = new HashSet<Integer>(tempSize);
-		for (int i = 0; i < tempSize; i++)
-			hiddenColumns.add(input.readInt());
-		
-		tempSize = input.readInt();
-		mergeRanges = new ArrayList<CellRangeAddress>(tempSize);
-		for (int i = 0; i < tempSize; i++)
-			mergeRanges.add(SerializationHelpers.readCellRangeAddress(input, readSerialVersionUID));
-		
-		tempSize = input.readInt();
-		columnGroups = new ArrayList<Triple<Integer, Integer, Boolean>>();
-		for (int i = 0; i < tempSize; i++)
-			columnGroups.add(SerializationHelpers.readGroupTriple(input, readSerialVersionUID));
-		
-		tempSize = input.readInt();
-		rowGroups = new ArrayList<Triple<Integer, Integer, Boolean>>();
-		for (int i = 0; i < tempSize; i++)
-			rowGroups.add(SerializationHelpers.readGroupTriple(input, readSerialVersionUID));
+		// also update the internal state for next sheet to modify (esp. as the serialization logic
+		// is used to clone objects in memory)
+		if (numberOfSheets == 1)
+			designatedSheetnameForModifications = sheetStates.keySet().iterator().next();
 	}
 
 	
@@ -878,69 +1052,87 @@ public class XlsFormatterState implements PortObject, Externalizable {
 	@Override
 	public void writeExternal(ObjectOutput output) throws IOException {
 		
-		output.writeLong(serialVersionUID);
+		// write the internal serialization version (code state) based on which even future code can detect how
+		// to deserialize this object stream (for downward compatibility)
+		output.writeLong((long)masterSerializationVersion);
 		
-		// write cells map:
-		output.writeInt(cells.size());
-		for (CellAddress address : cells.keySet()) {
-			SerializationHelpers.writeCellAddress(address, output, serialVersionUID);
-			cells.get(address).writeExternal(output, serialVersionUID);
-		}
+		/* Earliest old serialization version that this file can still be read/deserialized with.
+		 * This concept provides a chance to selectively allow upward compatibility. (Downward compatibility shall always be
+		 * supported.) When reading a file written by this method in an older code version, the above written masterSerializationVersion
+		 * is first checked. Naively, the old code would throw an exception if a newer (i.e. higher) version is read (because
+		 * the newer code could define a different byte stream even for the beginning of the file). However, newer code
+		 * can write the earliest previous serialization version that is already capable to read this newer byte stream,
+		 * despite not knowing about the additional content (i.e. typically since the changes in the versions since then
+		 * are only appended at the end of the byte stream).
+		 * 
+		 * History:
+		 * version 1, (selective upward compatibility not yet implemented)
+		 * version 2, earliestSerializationVersionCapableOfReadingThis 2 (because sheets are added early in the byte stream)
+		 */
+		output.writeInt(masterSerializationVersion); // WARNING: if unsure, set this one to masterSerializationVersion
 		
-		output.writeBoolean(freezeSheetAtTopLeftCornerOfCell != null);
-		if (freezeSheetAtTopLeftCornerOfCell != null)
-			SerializationHelpers.writeCellAddress(freezeSheetAtTopLeftCornerOfCell, output, serialVersionUID);
-
-		output.writeBoolean(autoFilterRange != null);
-		if (autoFilterRange != null)
-			SerializationHelpers.writeCellRangeAddress(autoFilterRange, output, serialVersionUID);
 		
-		output.writeInt(rowHeights.size());
-		for (Integer key : rowHeights.keySet()) {
-			output.writeInt(key);
-			output.writeDouble(rowHeights.get(key));
-		}
-		
-		output.writeInt(columnWidths.size());
-		for (Integer key : columnWidths.keySet()) {
-			output.writeInt(key);
-			Double columnWidth = columnWidths.get(key);
-			output.writeBoolean(columnWidth != null); // null means auto-size
-			if (columnWidth != null)
-				output.writeDouble(columnWidths.get(key));
-		}
-		
-		output.writeInt(hiddenRows.size());
-		for (Integer key : hiddenRows)
-			output.writeInt(key);
-		
-		output.writeInt(hiddenColumns.size());
-		for (Integer key : hiddenColumns)
-			output.writeInt(key);
-		
-		output.writeInt(mergeRanges.size());
-		for (CellRangeAddress mergeRange : mergeRanges)
-			SerializationHelpers.writeCellRangeAddress(mergeRange, output, serialVersionUID);
-		
-		output.writeInt(columnGroups.size());
-		for (Triple<Integer, Integer, Boolean> group : columnGroups)
-			SerializationHelpers.writeGroupTriple(group, output, serialVersionUID);
-		
-		output.writeInt(rowGroups.size());
-		for (Triple<Integer, Integer, Boolean> group : rowGroups)
-			SerializationHelpers.writeGroupTriple(group, output, serialVersionUID);
-	}
+		// iterate all sheets
+		output.writeInt(sheetStates.size());
+		for (String sheetName : sheetStates.keySet()) {
+			SheetState sheetState = sheetStates.get(sheetName);
+			SerializationHelpers.writeNullableString(sheetName, output, masterSerializationVersion);
+			
+			// write cells map:
+			output.writeInt(sheetState.cells.size());
+			for (CellAddress address : sheetState.cells.keySet()) {
+				SerializationHelpers.writeCellAddress(address, output, masterSerializationVersion);
+				sheetState.cells.get(address).writeExternal(output, masterSerializationVersion);
+			}
+			
+			output.writeBoolean(sheetState.freezeSheetAtTopLeftCornerOfCell != null);
+			if (sheetState.freezeSheetAtTopLeftCornerOfCell != null)
+				SerializationHelpers.writeCellAddress(sheetState.freezeSheetAtTopLeftCornerOfCell, output, masterSerializationVersion);
 	
-	@Override
-	public String getSummary() {
-		return "XLS Formatter Port";
+			output.writeBoolean(sheetState.autoFilterRange != null);
+			if (sheetState.autoFilterRange != null)
+				SerializationHelpers.writeCellRangeAddress(sheetState.autoFilterRange, output, masterSerializationVersion);
+			
+			output.writeInt(sheetState.rowHeights.size());
+			for (Integer key : sheetState.rowHeights.keySet()) {
+				output.writeInt(key);
+				output.writeDouble(sheetState.rowHeights.get(key));
+			}
+			
+			output.writeInt(sheetState.columnWidths.size());
+			for (Integer key : sheetState.columnWidths.keySet()) {
+				output.writeInt(key);
+				Double columnWidth = sheetState.columnWidths.get(key);
+				output.writeBoolean(columnWidth != null); // null means auto-size
+				if (columnWidth != null)
+					output.writeDouble(sheetState.columnWidths.get(key));
+			}
+			
+			output.writeInt(sheetState.hiddenRows.size());
+			for (Integer key : sheetState.hiddenRows)
+				output.writeInt(key);
+			
+			output.writeInt(sheetState.hiddenColumns.size());
+			for (Integer key : sheetState.hiddenColumns)
+				output.writeInt(key);
+			
+			output.writeInt(sheetState.mergeRanges.size());
+			for (CellRangeAddress mergeRange : sheetState.mergeRanges)
+				SerializationHelpers.writeCellRangeAddress(mergeRange, output, masterSerializationVersion);
+			
+			output.writeInt(sheetState.columnGroups.size());
+			for (Map.Entry<Pair<Integer, Integer>, Boolean> group : sheetState.columnGroups.entrySet())
+				SerializationHelpers.writeGroupingEntry(group.getKey().getLeft(), group.getKey().getRight(), group.getValue(), output, masterSerializationVersion);
+			
+			output.writeInt(sheetState.rowGroups.size());
+			for (Map.Entry<Pair<Integer, Integer>, Boolean> group : sheetState.rowGroups.entrySet())
+				SerializationHelpers.writeGroupingEntry(group.getKey().getLeft(), group.getKey().getRight(), group.getValue(), output, masterSerializationVersion);
+		}
 	}
 
 	@Override
 	public PortObjectSpec getSpec() {
-		XlsFormatterStateSpec spec = new XlsFormatterStateSpec();
-		spec.setContainsMergeInstruction(mergeRanges.size() != 0);
-		return spec;
+		return new XlsFormatterStateSpec();
 	}
 
 	@Override
@@ -974,6 +1166,43 @@ public class XlsFormatterState implements PortObject, Externalizable {
 	    return (XlsFormatterState)(new ObjectInputStream(new ByteArrayInputStream(byteOutputStream.toByteArray()))).readObject();
 		} catch (Exception e) {
 			throw new Exception("Implementation issue: Error during cloning of XLS Formatter State.", e);
+		}
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (obj == null)
+			return false;
+		
+		try {
+			ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+			(new ObjectOutputStream(byteOutputStream)).writeObject(this);
+			byte[] thisAsByteArray = byteOutputStream.toByteArray();
+			
+			byteOutputStream = new ByteArrayOutputStream();
+			(new ObjectOutputStream(byteOutputStream)).writeObject(obj);
+			byte[] refAsByteArray = byteOutputStream.toByteArray();
+			
+			if (thisAsByteArray.length != refAsByteArray.length)
+				return false;
+			
+			for (int i = 0; i < thisAsByteArray.length; i++)
+				if (thisAsByteArray[i] != refAsByteArray[i])
+					return false;
+			return true;
+		} catch (IOException ioe) {
+			return false;
+		}
+	}
+	
+	@Override
+	public int hashCode() {
+		try {
+			ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+			(new ObjectOutputStream(byteOutputStream)).writeObject(this); 
+			return byteOutputStream.toByteArray().hashCode();
+		} catch (IOException ioe) {
+			return 0;
 		}
 	}
 	

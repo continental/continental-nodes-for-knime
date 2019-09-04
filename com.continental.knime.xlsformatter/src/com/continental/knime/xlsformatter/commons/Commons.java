@@ -45,6 +45,18 @@ public class Commons {
 	}
 	
 	/**
+	 * Helps to generate number/text combinations that have correct singular, plural form, e.g. "1 item", "2 items"
+	 * @param number The numeric value that the returned String starts with.
+	 * @param text The text at the end, containing (s) as the placeholder for plural that will be replaced depending on the number.
+	 */
+	public static String resolvePluralString(int number, String text) {
+		if (!text.startsWith(" "))
+			text = " " + text;
+		String pluralReplacement = number == 1 ? "" : "s";
+		return number + text.replace("(s)", pluralReplacement);
+	}
+	
+	/**
 	 * Modes of how to add two tables.
 	 */
 	public static enum Modes {

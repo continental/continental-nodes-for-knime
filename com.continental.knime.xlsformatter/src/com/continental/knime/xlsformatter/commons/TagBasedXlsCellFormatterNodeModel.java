@@ -38,6 +38,12 @@ public abstract class TagBasedXlsCellFormatterNodeModel extends NodeModel {
 			setWarningMessage(getWarningMessage(searchedTag));
 	}
 	
+	protected void warnOnNoMatchingTags(List<CellAddress> matchingTags, String searchedTag,
+			WarningMessageContainer warningMessageContainer) {
+		if (matchingTags == null || matchingTags.size() == 0)
+			warningMessageContainer.addMessage(getWarningMessage(searchedTag));
+	}
+	
 	public static String getWarningMessage(String searchedTag) {
 		return "Tag \"" + searchedTag + "\" was not found in any cell of the provided control table.";
 	}

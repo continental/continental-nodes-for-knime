@@ -22,38 +22,45 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import org.knime.core.node.InvalidSettingsException;
+import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
+import org.knime.core.node.NotConfigurableException;
 import org.knime.core.node.defaultnodesettings.DefaultNodeSettingsPane;
 import org.knime.core.node.defaultnodesettings.DialogComponentBoolean;
 import org.knime.core.node.defaultnodesettings.DialogComponentString;
 import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
+import org.knime.core.node.port.PortObjectSpec;
 
 import com.continental.knime.xlsformatter.commons.UiValidation;
 
 public class XlsFormatterCellMergerNodeDialog extends DefaultNodeSettingsPane {
 
 	SettingsModelString tag;
-	SettingsModelBoolean alltags;
+	SettingsModelBoolean allTags;
 
+	ChangeListener changeListener = new CellMergerDialogChangeListener();
+	
 	protected XlsFormatterCellMergerNodeDialog() {
 		super();
 
 		this.createNewGroup("Tag Selection");
 		this.setHorizontalPlacement(true);
-		tag = new SettingsModelString(XlsFormatterCellMergerNodeModel.CFGKEY_TAGSTRING,XlsFormatterCellMergerNodeModel.DEFAULT_TAGSTRING);
-		this.addDialogComponent(new DialogComponentString(tag, "applies to tag (single tag only)"));
+		tag = new SettingsModelString(XlsFormatterCellMergerNodeModel.CFGKEY_TAGSTRING, XlsFormatterCellMergerNodeModel.DEFAULT_TAGSTRING);
+		this.addDialogComponent(new DialogComponentString(tag, "applies to tag (single tag only)", true, 10));
 		
-		alltags = new SettingsModelBoolean(XlsFormatterCellMergerNodeModel.CFGKEY_ALL_TAGS, XlsFormatterCellMergerNodeModel.DEFAULT_ALL_TAGS);
-		DialogComponentBoolean alltagsComponent = new DialogComponentBoolean(alltags,"applies to all tags");
+		allTags = new SettingsModelBoolean(XlsFormatterCellMergerNodeModel.CFGKEY_ALL_TAGS, XlsFormatterCellMergerNodeModel.DEFAULT_ALL_TAGS);
+		DialogComponentBoolean alltagsComponent = new DialogComponentBoolean(allTags, "applies to all tags");
 		this.addDialogComponent(alltagsComponent);
 		this.setHorizontalPlacement(false);
 		
-		alltags.addChangeListener(new ChangeListener(){
-			public void stateChanged(final ChangeEvent e) {
-				tag.setEnabled(!alltags.getBooleanValue());
-			}
-		});
+		allTags.addChangeListener(changeListener);
+	}
+	
+	class CellMergerDialogChangeListener implements ChangeListener {
+		public void stateChanged(final ChangeEvent e) {
+			tag.setEnabled(!allTags.getBooleanValue());
+		}
 	}
 	
 	@Override
@@ -61,5 +68,12 @@ public class XlsFormatterCellMergerNodeDialog extends DefaultNodeSettingsPane {
 		super.saveAdditionalSettingsTo(settings);
 		
 		UiValidation.validateTagField(tag);
+	}
+	
+	@Override
+	public void loadAdditionalSettingsFrom(NodeSettingsRO settings, PortObjectSpec[] specs)
+			throws NotConfigurableException {
+		super.loadAdditionalSettingsFrom(settings, specs);
+		changeListener.stateChanged(null);
 	}
 }

@@ -18,6 +18,12 @@
 
 package com.continental.knime.xlsformatter.commons;
 
+import org.knime.core.node.ExecutionContext;
+import org.knime.core.node.NodeLogger;
+
+import com.continental.knime.xlsformatter.apply.XlsFormatterApplyLogic;
+import com.continental.knime.xlsformatter.porttype.XlsFormatterState;
+
 /**
  * Validation for an intermediate XlsFormattingState checking whether it can still be implemented
  * according to the XLSX workbook specifications and limits as published in
@@ -32,5 +38,29 @@ public class XlsFormattingStateValidator {
 	public static final int MAX_NUMBER_FORMATS_PER_WORKBOOK = 200;
 	public static final int MAX_ROW_HEIGHT_IN_POINTS = 409;
 	public static final int MAX_HYPERLINKS_PER_WORKBOOK = 66530;
+	public static final int MAX_HYPERLINKS_PER_WORKBOOK_EFFECTIVE = 20000; // due to experience with corrupt XLSX files at half to slightly below 66530
 	public static final int MAX_FORMULA_CHARACTERS = 8192;
+	
+	public enum ValidationModes {
+		STYLES,
+		LINKS,
+		EVERYTHING
+	}
+	
+	public static void validateState(final XlsFormatterState state, final ValidationModes validationMode,
+			WarningMessageContainer warningMessageContainer, final ExecutionContext exec, final NodeLogger logger) throws Exception {
+		
+		if (validationMode != ValidationModes.LINKS)
+			XlsFormatterApplyLogic.checkDerivedStyleComplexity(state, warningMessageContainer, exec, logger);
+		
+		if (validationMode != ValidationModes.STYLES) {
+			int numberOfHyperlinks = 0;
+			for (XlsFormatterState.SheetState xlsfs : state.sheetStates.values())
+				for (XlsFormatterState.CellState cellState : xlsfs.cells.values())
+					if (cellState.hyperlink != null)
+						numberOfHyperlinks++;
+			if (numberOfHyperlinks > MAX_HYPERLINKS_PER_WORKBOOK_EFFECTIVE)
+				throw new Exception("The XLS Formatter port object has been loaded with more hyperlinks than allowed (" + MAX_HYPERLINKS_PER_WORKBOOK_EFFECTIVE + ").");
+		}
+	}
 }

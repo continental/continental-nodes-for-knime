@@ -39,14 +39,14 @@ public class XlsControlTableFromCellRangeNodeDialog extends DefaultNodeSettingsP
 	protected XlsControlTableFromCellRangeNodeDialog() {
 		super();
 
-		cellRange = new SettingsModelString(XlsControlTableFromCellRangeNodeModel.CFGKEY_CELLRANGE_STRING, XlsControlTableFromCellRangeNodeModel.DEFAULT_CELLRANGE_STRING);
-		addDialogComponent(new DialogComponentString(cellRange, "cell range"));
+		cellRange = new SettingsModelString(XlsControlTableFromCellRangeNodeModel.CFGKEY_CELLRANGE, XlsControlTableFromCellRangeNodeModel.DEFAULT_CELLRANGE);
+		addDialogComponent(new DialogComponentString(cellRange, "cell range", true, 10));
 
-		tag = new SettingsModelString(XlsControlTableFromCellRangeNodeModel.CFGKEY_TAG_STRING, XlsControlTableFromCellRangeNodeModel.DEFAULT_TAG_STRING);
-		addDialogComponent(new DialogComponentString(tag, "tag to set in control table"));
+		tag = new SettingsModelString(XlsControlTableFromCellRangeNodeModel.CFGKEY_TAG, XlsControlTableFromCellRangeNodeModel.DEFAULT_TAG);
+		addDialogComponent(new DialogComponentString(tag, "tag to set in control table", true, 10));
 
 		String[] modeButtons = XlsFormatterUiOptions.getDropdownArrayFromEnum(Modes.values());
-		combineMode = new SettingsModelString(XlsControlTableFromCellRangeNodeModel.CFGKEY_MODE_STRING, XlsControlTableFromCellRangeNodeModel.DEFAULT_MODE_STRING);
+		combineMode = new SettingsModelString(XlsControlTableFromCellRangeNodeModel.CFGKEY_MODE, XlsControlTableFromCellRangeNodeModel.DEFAULT_MODE);
 		addDialogComponent(new DialogComponentButtonGroup(combineMode, "combine mode", false, modeButtons, modeButtons));
 	}
 

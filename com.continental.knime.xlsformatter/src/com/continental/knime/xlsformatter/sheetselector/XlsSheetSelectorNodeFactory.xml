@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./sheetselector.png" type="Manipulator" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+    <name>XLS Sheet Selector</name>
+    
+   	<shortDescription>
+       The XLS Sheet Selector node specifies the target XLS sheet for further XLS formatting instructions.
+   	</shortDescription>
+    
+    <fullDescription>
+        <intro>
+	       	The XLS Sheet Selector node specifies the target XLS sheet for further XLS formatting instructions.<p />
+       		
+       		Further downstream XLS Formatting nodes then define the formatting instructions for this sheet. These can finally be written to a xlsx file for all sheets at once via the <i>XLS Formatter (apply)</i> node.
+    	</intro>
+    	    
+    	<option name="select sheet by name?">If deactivated, the first sheet is used instead (as if this node would be omitted).</option>
+    	<option name="sheet name">The name of the XLS sheet that you want further instructions to be applied on.</option>
+    </fullDescription>
+    
+    <ports>
+		<outPort index="0" name="XLS Formatter">The XLS Formatter output port as collector for downstream formatting instructions for this sheet.</outPort>
+    </ports>    
+
+</knimeNode>

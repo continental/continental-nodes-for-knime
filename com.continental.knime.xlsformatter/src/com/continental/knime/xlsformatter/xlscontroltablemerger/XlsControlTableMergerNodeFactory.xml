@@ -3,15 +3,15 @@
     <name>XLS Control Table Merger</name>
     
     <shortDescription>
-       The XLS Control Table Merger merges two control tables together. You can either overwrite or append to the information from the first control table. 
+       The XLS Control Table Merger combines two control tables. You can either append all tags, or overwrite the information from the first control table by that of the second one in case of conflict. 
    	</shortDescription>
     
     <fullDescription>
         <intro>
-			The XLS Control Table Merger merges two control tables together. You can either overwrite or append to the information from the first control table.
+			The XLS Control Table Merger combines two control tables. You can either append all tags, or overwrite the information from the first control table by that of the second one in case of conflict.
     	</intro>
     	
-        <option name="how to combine second with first table">Either overwrite or append to the information from the first control table with the information from the second control table.</option>
+        <option name="how to combine second with first table">Either append all tags, or overwrite the information from the first control table by that of the second one in case of conflict.</option>
         
     </fullDescription>
     

@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 
 import org.apache.poi.ss.util.CellAddress;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.knime.core.data.DataTableSpec;
 import org.knime.core.node.BufferedDataTable;
 import org.knime.core.node.CanceledExecutionException;
 import org.knime.core.node.ExecutionContext;
@@ -42,6 +43,7 @@ import com.continental.knime.xlsformatter.commons.TagBasedXlsCellFormatterNodeMo
 import com.continental.knime.xlsformatter.commons.WarningMessageContainer;
 import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableAnalysisTools;
 import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableValidator;
+import com.continental.knime.xlsformatter.commons.XlsFormatterTagTools;
 import com.continental.knime.xlsformatter.commons.XlsFormatterUiOptions;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterState;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterStateSpec;
@@ -108,6 +110,7 @@ public class XlsSheetPropertiesNodeModel extends TagBasedXlsCellFormatterNodeMod
 			throw new IllegalArgumentException("The provided input table is not a valid XLS control table. See log for details.");
 		
 		XlsFormatterState xlsf = XlsFormatterState.getDeepClone(inObjects[1]);
+		WarningMessageContainer warningMessageContainer = new WarningMessageContainer();
 
 		BufferedDataTable inputTable = (BufferedDataTable)inObjects[0];
 		FunctionOptions function = FunctionOptions.getFromString(m_function.getStringValue());
@@ -115,7 +118,7 @@ public class XlsSheetPropertiesNodeModel extends TagBasedXlsCellFormatterNodeMod
 		List<CellAddress> matchingCells = XlsFormatterControlTableAnalysisTools.getCellsMatchingTag(
 				inputTable, m_tag.getStringValue(), exec, logger);
 		if (matchingCells == null || matchingCells.size() == 0) {
-			warnOnNoMatchingTags(matchingCells, m_tag.getStringValue().trim());
+			warnOnNoMatchingTags(matchingCells, m_tag.getStringValue().trim()); // not feeding the warningMessageContainer, because next line is return statement
 			return new PortObject[] { xlsf };
 		}
 
@@ -134,35 +137,35 @@ public class XlsSheetPropertiesNodeModel extends TagBasedXlsCellFormatterNodeMod
 						currentCandidate = cell;
 				}
 			if (currentCandidate.getRow() == 0 && currentCandidate.getColumn() == 0) // warn at freeze at A1
-				setWarningMessage("Freeze cell A1 means no visual freeze effect. Did you intend to freeze at the top-left corner of cell B2?");
+				warningMessageContainer.addMessage("Freeze cell A1 means no visual freeze effect. Did you intend to freeze at the top-left corner of cell B2?");
 			else if (isAmbiguousCandidate)
-				setWarningMessage("Multiple cells matched that provided tag and a top-left one could not be identified unambiguously.");
-			xlsf.freezeSheetAtTopLeftCornerOfCell = currentCandidate;
+				warningMessageContainer.addMessage("Multiple cells matched that provided tag and a top-left one could not be identified unambiguously.");
+			xlsf.getCurrentSheetStateForModification().freezeSheetAtTopLeftCornerOfCell = currentCandidate;
 			break;
 
 		case AUTOFILTER:
-			WarningMessageContainer warningMessage = new WarningMessageContainer();
-			List<CellRangeAddress> ranges = XlsFormatterControlTableAnalysisTools.getRangesFromTag(inputTable, m_tag.getStringValue(), false, true, warningMessage, exec, logger);
+			List<CellRangeAddress> ranges = XlsFormatterControlTableAnalysisTools.getRangesFromTag(inputTable, m_tag.getStringValue(), false, true, warningMessageContainer, exec, logger);
 			logger.debug("Detected auto-filter range as: " + ranges.stream().map(r -> r.formatAsString()).collect(Collectors.joining(";")));
 			if (ranges.size() != 1)
 				throw new IllegalArgumentException("For auto-filter, only one rectangular range may match the searched tag.");
-			if (warningMessage.hasMessage())
-				setWarningMessage(warningMessage.getMessage());
-			xlsf.autoFilterRange = ranges.get(0);
+			xlsf.getCurrentSheetStateForModification().autoFilterRange = ranges.get(0);
 			break;
 
 		case HIDE_COLUMNS:
-			xlsf.hiddenColumns.addAll(matchingCells.stream().map(c -> c.getColumn()).collect(Collectors.toList()));
+			xlsf.getCurrentSheetStateForModification().hiddenColumns.addAll(matchingCells.stream().map(c -> c.getColumn()).collect(Collectors.toList()));
 			break;
 
 		case HIDE_ROWS:
-			xlsf.hiddenRows.addAll(matchingCells.stream().map(c -> c.getRow()).collect(Collectors.toList()));
+			xlsf.getCurrentSheetStateForModification().hiddenRows.addAll(matchingCells.stream().map(c -> c.getRow()).collect(Collectors.toList()));
 			break;
 
 		default:
 			throw new IllegalArgumentException();
 		}
 
+		if (warningMessageContainer.hasMessage())
+			setWarningMessage(warningMessageContainer.getMessage());
+		
 		return new PortObject[] { xlsf };
 	}
 
@@ -170,9 +173,15 @@ public class XlsSheetPropertiesNodeModel extends TagBasedXlsCellFormatterNodeMod
 	protected PortObjectSpec[] configure(final PortObjectSpec[] inSpecs)
 			throws InvalidSettingsException {   	
 
-		if (inSpecs[1] != null && ((XlsFormatterStateSpec)inSpecs[1]).getContainsMergeInstruction() == true)
-			throw new InvalidSettingsException("No futher XLS Formatting nodes allowed after Cell Merger.");
+		if (m_tag.getStringValue().trim().equals(""))
+			throw new IllegalArgumentException("Empty tag is not allowed, you need to enter something here that is also present in your control table (e.g., \"x\" or \"data\"");
 
+		if (!XlsFormatterTagTools.isValidSingleTag(m_tag.getStringValue().trim()))
+			throw new IllegalArgumentException("Only a single tag is allowed, no comma-separated list.");
+
+		if (!XlsFormatterControlTableValidator.isControlTableSpec((DataTableSpec)inSpecs[0], logger))
+			throw new InvalidSettingsException("The configured input table header is not that of a valid XLS Formatting control table. See log for details.");
+		
 		return new PortObjectSpec[] { inSpecs[1] == null ? XlsFormatterStateSpec.getEmptySpec() : ((XlsFormatterStateSpec)inSpecs[1]).getCopy() };
 	}
 

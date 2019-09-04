@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.poi.ss.util.CellAddress;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.knime.core.data.DataTableSpec;
 import org.knime.core.node.BufferedDataTable;
@@ -47,6 +48,7 @@ import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableAnalys
 import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableValidator;
 import com.continental.knime.xlsformatter.commons.XlsFormatterControlTableValidator.ControlTableType;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterState;
+import com.continental.knime.xlsformatter.porttype.XlsFormatterState.CellState;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterStateSpec;
 
 public class XlsFormatterCellMergerNodeModel extends TagBasedXlsCellFormatterNodeModel {
@@ -58,7 +60,7 @@ public class XlsFormatterCellMergerNodeModel extends TagBasedXlsCellFormatterNod
 	//Input tag string
 	static final String CFGKEY_TAGSTRING = "Tag(s)";
 	static final String DEFAULT_TAGSTRING = "header";
-	final SettingsModelString m_tagstring =
+	final SettingsModelString m_tag =
 			new SettingsModelString(CFGKEY_TAGSTRING,DEFAULT_TAGSTRING);
 	
 	static final String CFGKEY_ALL_TAGS = "AllTags";
@@ -88,14 +90,18 @@ public class XlsFormatterCellMergerNodeModel extends TagBasedXlsCellFormatterNod
 			throw new IllegalArgumentException("The provided input table is not a valid XLS control table. See log for details.");
 
 		XlsFormatterState xlsf = XlsFormatterState.getDeepClone(inObjects[1]);
+		XlsFormatterState.SheetState xlsfs = xlsf.getCurrentSheetStateForModification();
 		
+		// define list of to merge tags
 		List<String> tagsToMerge = new ArrayList<String>();
 		if (m_allTags.getBooleanValue())
 			tagsToMerge = XlsFormatterControlTableAnalysisTools.getAllFullCellContentTags((BufferedDataTable)inObjects[0], exec, logger); 
 		else
-			tagsToMerge.add(m_tagstring.getStringValue());
+			tagsToMerge.add(m_tag.getStringValue());
 		
 		WarningMessageContainer warningMessage = new WarningMessageContainer();
+		
+		// derive list of ranges from list of tags and fail in case of inconsistencies:
 		List<CellRangeAddress> newRanges = new ArrayList<CellRangeAddress>(); 
 		for (String tag : tagsToMerge) {
 			List<CellRangeAddress> mergeRanges = XlsFormatterControlTableAnalysisTools.getRangesFromTag((BufferedDataTable)inObjects[0], tag, m_allTags.getBooleanValue(), 
@@ -106,11 +112,37 @@ public class XlsFormatterCellMergerNodeModel extends TagBasedXlsCellFormatterNod
 				throw new IllegalArgumentException("The provided merge ranges overlap with eachother. See log for details.");
 			newRanges.addAll(mergeRanges);
 		}
-		if (AddressingTools.hasOverlap(xlsf.mergeRanges, newRanges, exec, logger))
+		if (AddressingTools.hasOverlap(xlsf.getCurrentSheetStateForModification().mergeRanges, newRanges, exec, logger))
 			throw new IllegalArgumentException("The provided merge ranges overlap with previously defined ranges. See log for details.");
+		
+		// check whether an individual merge range will loose prior defined varying formatting instructions
+		// of the contained cells (except border formatting) and warn: 
+		boolean showWarningAboutMergeFormattingLoss = false;
+		for (CellRangeAddress mergeRange : newRanges) {
+			String topLeftCellFormat = null;
+			CellAddress topLeftCellAddress = new CellAddress(mergeRange.getFirstRow(), mergeRange.getFirstColumn());
+			for (int r = mergeRange.getFirstRow(); r <= mergeRange.getLastRow(); r++) {
+				for (int c = mergeRange.getFirstColumn(); c <= mergeRange.getLastColumn(); c++) {
+					CellAddress cellAddress = new CellAddress(r, c);
+					CellState cellState = xlsfs.cells.containsKey(cellAddress) ? xlsfs.cells.get(cellAddress) : null;
+					String cellShortString = cellState == null ? "[na]" : cellState.cellFormatToShortString(false, false);
+					if (topLeftCellFormat == null) // this means we are at the beginning of the loop, i.e. at the top-left cell
+						topLeftCellFormat = cellShortString;
+					else // topLeftCellFormat was already set, we now search for a deviation from it
+						if (cellState != null && !cellShortString.equals(topLeftCellFormat)) {
+							showWarningAboutMergeFormattingLoss = true;
+							logger.debug("For merge range " + mergeRange.formatAsString() + ", cell " + cellAddress.formatAsString() + " has different formatting instructions (not considering border formats) than the top-left cell " + topLeftCellAddress.formatAsString() + ".");
+						}
+				}
+			}
+		}
+		if (showWarningAboutMergeFormattingLoss)
+			warningMessage.addMessage("This merge makes prior cell formatting instructions obsolete as only the top-left cell of a merged range will be considered by the XLS Formatter (apply) node.");
+		
+		// show warnings and implement merge in state:
 		if (warningMessage.hasMessage())
 			setWarningMessage(warningMessage.getMessage());
-		xlsf.mergeRanges.addAll(newRanges);
+		xlsfs.mergeRanges.addAll(newRanges);
 
 		return new PortObject[] { xlsf };
 	}
@@ -122,9 +154,8 @@ public class XlsFormatterCellMergerNodeModel extends TagBasedXlsCellFormatterNod
 		if (!XlsFormatterControlTableValidator.isControlTableSpec((DataTableSpec)inSpecs[0], logger))
 			throw new InvalidSettingsException("The configured input table header is not that of a valid XLS Formatting control table. See log for details.");
 
-
 		XlsFormatterStateSpec spec = inSpecs[1] == null ? XlsFormatterStateSpec.getEmptySpec() : ((XlsFormatterStateSpec)inSpecs[1]).getCopy();
-		spec.setContainsMergeInstruction(true);
+		
 		return new PortObjectSpec[] { spec };
 	}
 
@@ -134,7 +165,7 @@ public class XlsFormatterCellMergerNodeModel extends TagBasedXlsCellFormatterNod
 	@Override
 	protected void saveSettingsTo(final NodeSettingsWO settings) {
 
-		m_tagstring.saveSettingsTo(settings);
+		m_tag.saveSettingsTo(settings);
 		m_allTags.saveSettingsTo(settings);
 	}
 
@@ -145,7 +176,7 @@ public class XlsFormatterCellMergerNodeModel extends TagBasedXlsCellFormatterNod
 	protected void loadValidatedSettingsFrom(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 
-		m_tagstring.loadSettingsFrom(settings);
+		m_tag.loadSettingsFrom(settings);
 		m_allTags.loadSettingsFrom(settings);
 
 	}
@@ -157,7 +188,7 @@ public class XlsFormatterCellMergerNodeModel extends TagBasedXlsCellFormatterNod
 	protected void validateSettings(final NodeSettingsRO settings)
 			throws InvalidSettingsException {
 
-		m_tagstring.validateSettings(settings);
+		m_tag.validateSettings(settings);
 		m_allTags.validateSettings(settings);
 
 	}

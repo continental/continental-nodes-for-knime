@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./portmerger.png" type="Manipulator" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+    <name>XLS Format Merger</name>
+    
+   	<shortDescription>
+       The XLS Format Merger node combines two or more XLS formatting instruction sets (i.e. ports) to one.
+   	</shortDescription>
+    
+    <fullDescription>
+        <intro>
+	       	The XLS Format Merger node combines two or more XLS formatting instruction sets (i.e. ports) to one.<p />
+       		
+       		This node can be used to combine formatting instructions set for different sheets (using the <i>XLS Sheet Selector</i> node) prior to the <i>XLS Formatter (apply)</i> node.<p />
+       		 
+       		When applied to the same sheet, properties are merged at the lowest detail level (e.g. cell A1's font formatted as bold merged with A1 font italic yields bold and italic). Thereby, the upper input port overwrites a lower one in case of conflicting information (e.g. two different font colors for the same cell). In case of overlapping cell merge ranges, this node fails.<p />
+       		
+       		Be aware that when merging the default sheet and a named sheet, this can cause the <i>XLS Formatter (apply)</i> node to fail later, if both of these point to the same XLS sheet.
+    	</intro>
+    </fullDescription>
+    
+    <ports>
+		<inPort index="0" name="XLS Formatter">A XLS Formatter input port that shall be merged.</inPort>
+		<inPort index="1" name="XLS Formatter">A XLS Formatter input port that shall be merged.</inPort>
+		<inPort index="2" name="XLS Formatter">A XLS Formatter input port that shall be merged.</inPort>
+		<inPort index="3" name="XLS Formatter">A XLS Formatter input port that shall be merged.</inPort>
+		<outPort index="0" name="XLS Formatter">The XLS Formatter output port with the combined formatting instructions of all input ports.</outPort>
+    </ports>    
+
+</knimeNode>

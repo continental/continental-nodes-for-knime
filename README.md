@@ -7,7 +7,7 @@ Many Continental employees are frequent users of the KNIME Analytics Platform fo
 Functionality
 -------------
 
-The Continental Nodes for KNIME Extension consists of different nodes that serve various purposes. Some are of algorithmic nature, most deal with exposing XLS formatting capabilities to KNIME users for reporting purposes. Technically, we expose functionality of the Apache POI library to the KNIME user. Comprising many formatting options, we follow typical KNIME usage patterns that especially allow dynamic input table specifications.
+The Continental Nodes for KNIME Extension consist of different nodes that serve various purposes. Some are of algorithmic nature, most deal with exposing XLS formatting capabilities to KNIME users for reporting purposes. Technically, we expose functionality of the Apache POI library to the KNIME user. Comprising many formatting options, we follow typical KNIME usage patterns that especially allow dynamic input table specifications.
 
 
 Typical Usage
@@ -19,4 +19,6 @@ The source code provided here is typically not compiled by the user. We also do 
 License
 -------
 
-This project is licensed under the GNU GENERAL PUBLIC LICENSE Version 3, see the LICENSE.txt file for details.
+Copyright (c) 2019 Continental Corporation. All rights reserved.
+
+This project is licensed under the GNU GENERAL PUBLIC LICENSE Version 3, see the [LICENSE.txt](https://github.com/continental/continental-nodes-for-knime/blob/master/LICENSE.txt) file for details.

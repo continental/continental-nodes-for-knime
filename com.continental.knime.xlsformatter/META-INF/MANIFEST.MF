@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Continental Nodes for KNIME
 Bundle-SymbolicName: com.continental.knime.xlsformatter;singleton:=true
-Bundle-Version: 0.8.2.qualifier
+Bundle-Version: 1.1.0.qualifier
 Bundle-ClassPath: xlsformatter.jar
 Bundle-Activator: com.continental.knime.xlsformatter.apply.XlsFormatterApplyNodePlugin
 Bundle-Vendor: Continental
@@ -24,9 +24,11 @@ Export-Package: com.continental.knime.xlsformatter.apply,
  com.continental.knime.xlsformatter.commons,
  com.continental.knime.xlsformatter.conditionalformatter,
  com.continental.knime.xlsformatter.fontformatter,
+ com.continental.knime.xlsformatter.portmerger,
  com.continental.knime.xlsformatter.porttype,
  com.continental.knime.xlsformatter.rowcolumnsizer,
  com.continental.knime.xlsformatter.sheetproperties,
+ com.continental.knime.xlsformatter.sheetselector,
  com.continental.knime.xlsformatter.xlscontroltablefromcellrange,
  com.continental.knime.xlsformatter.xlscontroltablegenerator,
  com.continental.knime.xlsformatter.xlscontroltablemerger
