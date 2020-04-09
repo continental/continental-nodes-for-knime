@@ -18,8 +18,22 @@
 
 package com.continental.knime.xlsformatter.commons;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+
 public class Commons {
 
+	/**
+	 * Resolves a file path to a local path, esp. in regards to knime://knime.workflow/ syntax.
+	 */
+	public static String resolveKnimePath(String path) throws IOException, URISyntaxException {
+		if (path.startsWith("knime:"))
+			return org.knime.core.util.pathresolve.ResolverUtil.resolveURItoLocalFile(new URI("knime", path.substring(6), null)).getAbsolutePath();
+		else
+			return path;
+	}
+	
 	/**
 	 * Parses an integer and returns null on mismatch.
 	 */

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
-   <feature url="features/com.continental.knime.feature_1.1.0.qualifier.jar" id="com.continental.knime.feature" version="1.1.0.qualifier">
+   <feature url="features/com.continental.knime.feature_1.2.0.qualifier.jar" id="com.continental.knime.feature" version="1.2.0.qualifier">
       <category name="Continental Nodes for KNIME"/>
    </feature>
    <category-def name="Continental Nodes for KNIME" label="Continental Nodes for KNIME"/>

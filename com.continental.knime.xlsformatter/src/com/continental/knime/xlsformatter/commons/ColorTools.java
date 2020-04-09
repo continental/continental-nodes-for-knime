@@ -70,4 +70,12 @@ public class ColorTools {
 	public static String colorToXlsfColorString(Color value) {
 		return (value.getAlpha() != 255 ? value.getAlpha() + "/" : "") + value.getRed() + "/" + value.getGreen() + "/" + value.getBlue();
 	}
+	public static String colorToXlsfColorString(XSSFColor value) {
+		if (value == null)
+			return null;
+		byte[] rgbArray = value.getRGB(); // byte is signed in Java
+		if (rgbArray == null || rgbArray.length != 3)
+			return null;
+		return (rgbArray[0] & 0xFF) + "/" + (rgbArray[1] & 0xFF) + "/" + (rgbArray[2] & 0xFF);
+	}
 }

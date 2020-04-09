@@ -16,25 +16,28 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.continental.knime.xlsformatter.xlscontroltablemerger;
+package com.continental.knime.xlsformatter.portmerger2;
+
+import org.knime.core.node.NodeDialogPane;
 
 import java.util.Optional;
 
-import org.knime.core.node.BufferedDataTable;
 import org.knime.core.node.ConfigurableNodeFactory;
-import org.knime.core.node.NodeDialogPane;
-import org.knime.core.node.NodeView;
 import org.knime.core.node.context.NodeCreationConfiguration;
 import org.knime.core.node.port.PortType;
 
-public class XlsControlTableMergerNodeFactory extends ConfigurableNodeFactory<XlsControlTableMergerNodeModel> {
+import com.continental.knime.xlsformatter.porttype.XlsFormatterState;
+
+import org.knime.core.node.NodeView;
+
+public class XlsPortMergerNodeFactory extends ConfigurableNodeFactory<XlsPortMergerNodeModel> {
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public XlsControlTableMergerNodeModel createNodeModel() {
-		return new XlsControlTableMergerNodeModel();
+	public XlsPortMergerNodeModel createNodeModel() {
+		return new XlsPortMergerNodeModel();
 	}
 
 	/**
@@ -49,8 +52,8 @@ public class XlsControlTableMergerNodeFactory extends ConfigurableNodeFactory<Xl
 	 * {@inheritDoc}
 	 */
 	@Override
-	public NodeView<XlsControlTableMergerNodeModel> createNodeView(final int viewIndex,
-			final XlsControlTableMergerNodeModel nodeModel) {
+	public NodeView<XlsPortMergerNodeModel> createNodeView(final int viewIndex,
+			final XlsPortMergerNodeModel nodeModel) {
 		return null;
 	}
 
@@ -63,23 +66,23 @@ public class XlsControlTableMergerNodeFactory extends ConfigurableNodeFactory<Xl
 	}
 
 	@Override
+  protected XlsPortMergerNodeModel createNodeModel(final NodeCreationConfiguration creationConfig) {
+      return new XlsPortMergerNodeModel(creationConfig.getPortConfig().get());
+  }
+
+	@Override
 	protected Optional<PortsConfigurationBuilder> createPortsConfigBuilder() {
-		PortsConfigurationBuilder builder = new PortsConfigurationBuilder();
+    PortsConfigurationBuilder builder = new PortsConfigurationBuilder();
     builder.addExtendableInputPortGroup(
     		"input",
-    		new PortType[]{ BufferedDataTable.TYPE, BufferedDataTable.TYPE},
-    		BufferedDataTable.TYPE);
-    builder.addFixedOutputPortGroup("Merged XLS Control Table", BufferedDataTable.TYPE);
+    		new PortType[]{ XlsFormatterState.TYPE, XlsFormatterState.TYPE},
+    		XlsFormatterState.TYPE);
+    builder.addFixedOutputPortGroup("Merged XLS Formatter State", XlsFormatterState.TYPE);
     return Optional.of(builder);
 	}
 
 	@Override
-	protected XlsControlTableMergerNodeModel createNodeModel(NodeCreationConfiguration creationConfig) {
-    return new XlsControlTableMergerNodeModel(creationConfig.getPortConfig().get());
-	}
-
-	@Override
 	protected NodeDialogPane createNodeDialogPane(NodeCreationConfiguration creationConfig) {
-		return new XlsControlTableMergerNodeDialog();
+		return new XlsPortMergerNodeDialog();
 	}
 }

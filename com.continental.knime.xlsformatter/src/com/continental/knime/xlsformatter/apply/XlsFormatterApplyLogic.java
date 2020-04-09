@@ -120,9 +120,30 @@ public class XlsFormatterApplyLogic {
 		catch (Exception e) {
 			throw new IllegalArgumentException("Could not open XLS file (" + inputFile + "): " + e.toString() + ":" + e.getMessage(), e);
 		}
-				
-		if (wb.getNumCellStyles() > ALLOWED_PREVIOUS_STYLES)
-			throw new IllegalArgumentException("The input file already contains formatting styles. This is currently unsupported in our extension beyond a degree that KNIME's XLS Writer node would utilize.");
+		
+		int numberOfPreviousStyles = wb.getNumCellStyles();
+		logger.debug(numberOfPreviousStyles + " previous style(s) and " + wb.getNumberOfFonts() + " font(s) found in input file " + inputFile); 
+		
+		if (numberOfPreviousStyles > ALLOWED_PREVIOUS_STYLES) {
+			
+			// Analyze these pre-existing styles (esp. since KNIME's Sheet Appender node seems to add duplicate styles):
+			int numberOfUniquePreviousStyles = 0;
+			for (int i = 0; i < numberOfPreviousStyles; i++) {
+				boolean isDuplicate = false;
+				for (int j = 0; j < i && !isDuplicate; j++)
+					if (wb.getCellStyleAt(i).equals(wb.getCellStyleAt(j)))
+						isDuplicate = true;
+				if (!isDuplicate)
+					numberOfUniquePreviousStyles++;
+			}
+			logger.debug("  Thereof " + numberOfUniquePreviousStyles + " unique style(s). Our tolerance limit is " + ALLOWED_PREVIOUS_STYLES + ".");
+			
+			if (numberOfUniquePreviousStyles > ALLOWED_PREVIOUS_STYLES)
+				throw new IllegalArgumentException("The input file already contains formatting styles. This is currently unsupported in our extension beyond a degree that KNIME's XLS Writer and Sheet Appender nodes would utilize.");
+		}
+		
+		// Note that if we carry on with some pre-existing (but duplicate) styles, adding many new styles could exceed the total style limit. This might not be detected
+		// in deriveNecessaryStyles yet, but would still trigger a POI-caused exception in the (very time consuming) process after adding the n+1st style
 		
 		// Derive and generate necessary POI styles:
 		exec.setProgress("Adding necessary styles...");
@@ -275,39 +296,6 @@ public class XlsFormatterApplyLogic {
 							xlsfs.freezeSheetAtTopLeftCornerOfCell.getRow());
 			}
 			
-			// Set column width:
-			if (xlsfs.columnWidths != null && xlsfs.columnWidths.size() != 0)
-				for (Integer c : xlsfs.columnWidths.keySet()) {
-					Double columnWidth = xlsfs.columnWidths.get(c);
-					if (columnWidth == null)
-						sheet.autoSizeColumn(c);
-					else
-						sheet.setColumnWidth(c, xlsToPoiStandardColumnWidthConversion(columnWidth));
-				}
-			exec.checkCanceled();
-			
-			// Set row height:
-			if (xlsfs.rowHeights != null && xlsfs.rowHeights.size() != 0)
-				for (Integer r : xlsfs.rowHeights.keySet())
-					safelyGetRow(sheet, r).setHeightInPoints((float)(double)xlsfs.rowHeights.get(r));
-			exec.checkCanceled();
-			
-			// Hide columns:
-			if (xlsfs.hiddenColumns != null && xlsfs.hiddenColumns.size() != 0)
-				for (Integer c : xlsfs.hiddenColumns)
-					sheet.setColumnHidden(c, true);
-			exec.checkCanceled();
-			
-			// Hide rows:
-			if (xlsfs.hiddenRows != null && xlsfs.hiddenRows.size() != 0)
-				for (Integer r : xlsfs.hiddenRows)
-					safelyGetRow(sheet, r).setZeroHeight(true);
-			exec.checkCanceled();
-			
-			// auto-filter range
-			if (xlsfs.autoFilterRange != null)
-				sheet.setAutoFilter(xlsfs.autoFilterRange);
-			
 			// merge ranges
 			if (xlsfs.mergeRanges != null && xlsfs.mergeRanges.size() != 0)
 				for (CellRangeAddress range : xlsfs.mergeRanges) {
@@ -329,6 +317,10 @@ public class XlsFormatterApplyLogic {
 					
 					sheet.addMergedRegion(range);
 				}
+			
+			// auto-filter range
+			if (xlsfs.autoFilterRange != null)
+				sheet.setAutoFilter(xlsfs.autoFilterRange);
 			
 			// conditional formatting:
 			Map<String, List<CellAddress>> mapIdenticallyConditionalFormattedCells = new HashMap<String, List<CellAddress>>();
@@ -386,6 +378,35 @@ public class XlsFormatterApplyLogic {
 				for (Map.Entry<Pair<Integer, Integer>, Boolean> group : xlsfs.rowGroups.entrySet()) { // <from, to>, collapsed
 					sheet.groupRow(group.getKey().getLeft(), group.getKey().getRight());
 					sheet.setRowGroupCollapsed(group.getKey().getLeft(), group.getValue()); // here, the group is identified by its from id
+				}
+			exec.checkCanceled();
+			
+			// Hide columns:
+			if (xlsfs.hiddenColumns != null && xlsfs.hiddenColumns.size() != 0)
+				for (Integer c : xlsfs.hiddenColumns)
+					sheet.setColumnHidden(c, true);
+			exec.checkCanceled();
+			
+			// Hide rows:
+			if (xlsfs.hiddenRows != null && xlsfs.hiddenRows.size() != 0)
+				for (Integer r : xlsfs.hiddenRows)
+					safelyGetRow(sheet, r).setZeroHeight(true);
+			exec.checkCanceled();
+			
+			// Set row height:
+			if (xlsfs.rowHeights != null && xlsfs.rowHeights.size() != 0)
+				for (Integer r : xlsfs.rowHeights.keySet())
+					safelyGetRow(sheet, r).setHeightInPoints((float)(double)xlsfs.rowHeights.get(r));
+			exec.checkCanceled();
+			
+			// Set column width (note that this should come last as auto-size can be dependent on other formatting settings):
+			if (xlsfs.columnWidths != null && xlsfs.columnWidths.size() != 0)
+				for (Integer c : xlsfs.columnWidths.keySet()) {
+					Double columnWidth = xlsfs.columnWidths.get(c);
+					if (columnWidth == null)
+						sheet.autoSizeColumn(c);
+					else
+						sheet.setColumnWidth(c, xlsToPoiStandardColumnWidthConversion(columnWidth));
 				}
 			exec.checkCanceled();
 		}
@@ -635,5 +656,9 @@ public class XlsFormatterApplyLogic {
 	 */
 	private static int xlsToPoiStandardColumnWidthConversion(double xlsColumnWidth) {
 		return (int)Math.round(257.5 * xlsColumnWidth + 165.37); // formula based on own experiment with different settings and linear regression on that
+	}
+	
+	public static double poiToXlsColumnWidthConversion(int poiColumnWidth) {
+		return (poiColumnWidth - 165.37d) / 257.5d;
 	}
 }

@@ -28,7 +28,7 @@
         <tab name="Tag Selection">
             <option name="applies to tag (single tag only)">Tag in your input table for which the formatting of this node should be applied to. </option>
             <option name="size">Select the row height or the column width. Standard height is ~14 and standard width is ~8. </option>
-            <option name="auto-size">Auto-size the column width depending on its cells' contents and formatting.</option>
+            <option name="auto-size">Auto-size the column width depending on its cells' contents and formatting. Note that the order of XLS formatting nodes is arbitrary and that the column auto-size settings are written last to the XLS file by the <i>XLS Formatter (apply)</i> node.</option>
   		</tab>     
 
     </fullDescription>

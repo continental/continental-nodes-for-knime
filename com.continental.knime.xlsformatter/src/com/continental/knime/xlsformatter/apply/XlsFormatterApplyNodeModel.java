@@ -20,8 +20,6 @@ package com.continental.knime.xlsformatter.apply;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 
 import org.knime.core.node.CanceledExecutionException;
 import org.knime.core.node.ExecutionContext;
@@ -38,6 +36,7 @@ import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.port.PortType;
 import org.knime.core.util.DesktopUtil;
 
+import com.continental.knime.xlsformatter.commons.Commons;
 import com.continental.knime.xlsformatter.commons.WarningMessageContainer;
 import com.continental.knime.xlsformatter.porttype.XlsFormatterState;
 
@@ -87,8 +86,8 @@ public class XlsFormatterApplyNodeModel extends NodeModel {
 
 		XlsFormatterState state = (XlsFormatterState)inObjects[0];
 
-		String out = resolveKnimePath(m_outputFile.getStringValue().trim());
-		String in = resolveKnimePath(m_inputFile.getStringValue().trim());
+		String out = Commons.resolveKnimePath(m_outputFile.getStringValue().trim());
+		String in = Commons.resolveKnimePath(m_inputFile.getStringValue().trim());
 
 		if (state.isEmpty())
 			setWarningMessage("The XLS Formatter Port input is empty, hence nothing could be applied.");
@@ -113,16 +112,6 @@ public class XlsFormatterApplyNodeModel extends NodeModel {
 		
 		return new PortObject[] {};
 	}
-	
-	/**
-	 * Resolves a file path to a local path, esp. in regards to knime://knime.workflow/ syntax.
-	 */
-	private static String resolveKnimePath(String path) throws IOException, URISyntaxException {
-		if (path.startsWith("knime:"))
-			return org.knime.core.util.pathresolve.ResolverUtil.resolveURItoLocalFile(new URI("knime", path.substring(6), null)).getAbsolutePath();
-		else
-			return path;
-	}
 
 	@Override
 	protected PortObjectSpec[] configure(final PortObjectSpec[] inSpecs)
@@ -130,7 +119,7 @@ public class XlsFormatterApplyNodeModel extends NodeModel {
 
 		String out;
 		try {
-			out = resolveKnimePath(m_outputFile.getStringValue().trim());
+			out = Commons.resolveKnimePath(m_outputFile.getStringValue().trim());
 		} catch (Exception e) {
 			throw new InvalidSettingsException("The stated output path is not a valid file path. " + e.getMessage(), e);
 		}

@@ -42,22 +42,27 @@ public class XlsFormatterControlTableCreateTools {
 	/**
 	 * Generates a column specification conform to the Xls Formatting Control Table specification and derives a BufferedDataContainer from it.
 	 */
-	public static BufferedDataContainer getNewBufferedDataContainer(final int columnCount, final ExecutionContext exec, final NodeLogger logger) {
-		
-		return exec.createDataContainer(createDataTableSpec(columnCount));
+	public static BufferedDataContainer getNewBufferedDataContainer(final int columnCount, final DataType dataType, final ExecutionContext exec, final NodeLogger logger) {	
+		return exec.createDataContainer(createDataTableSpec(columnCount, dataType));
+	}
+	public static BufferedDataContainer getNewBufferedDataContainer(final int columnCount, final ExecutionContext exec, final NodeLogger logger) {	
+		return exec.createDataContainer(createDataTableSpec(columnCount, StringCell.TYPE));
 	}
 	
 	/**
 	 * Creates a DataTableSpec of a XLS Formatting Control Table header of defined width.
 	 */
-	public static DataTableSpec createDataTableSpec(final int columnCount) {
+	public static DataTableSpec createDataTableSpec(final int columnCount, final DataType dataType) {
 		String[] newColumnNames = new String[columnCount];
 		DataType[] newDatatypes = new DataType[columnCount];
 		for (int c = 0; c < columnCount; c++) {
 			newColumnNames[c] = CellReference.convertNumToColString(c);
-			newDatatypes[c] = StringCell.TYPE;
+			newDatatypes[c] = dataType;
 		}
 		return new DataTableSpec(DataTableSpec.createColumnSpecs(newColumnNames, newDatatypes));
+	}
+	public static DataTableSpec createDataTableSpec(final int columnCount) {
+		return createDataTableSpec(columnCount, StringCell.TYPE);
 	}
 	
 	/**

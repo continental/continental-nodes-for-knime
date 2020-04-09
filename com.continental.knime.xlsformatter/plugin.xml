@@ -72,6 +72,12 @@
       <node
             category-path="/community/continental.nodes.for.knime/xlsformatter/"
             deprecated="false"
+            factory-class="com.continental.knime.xlsformatter.portmerger2.XlsPortMergerNodeFactory"
+            id="com.continental.knime.xlsformatter.portmerger2.XlsPortMergerNodeFactory">
+      </node>
+      <node
+            category-path="/community/continental.nodes.for.knime/xlsformatter/"
+            deprecated="true"
             factory-class="com.continental.knime.xlsformatter.portmerger.XlsPortMergerNodeFactory"
             id="com.continental.knime.xlsformatter.portmerger.XlsPortMergerNodeFactory">
       </node>

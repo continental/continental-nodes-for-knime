@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<knimeNode icon="./portmerger.png" type="Manipulator" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+<knimeNode icon="./portmerger.png" type="Manipulator" xmlns="http://knime.org/node/v4.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v4.1 http://knime.org/node/v4.1.xsd">
     <name>XLS Format Merger</name>
     
    	<shortDescription>
@@ -21,8 +21,6 @@
     <ports>
 		<inPort index="0" name="XLS Formatter">A XLS Formatter input port that shall be merged.</inPort>
 		<inPort index="1" name="XLS Formatter">A XLS Formatter input port that shall be merged.</inPort>
-		<inPort index="2" name="XLS Formatter">A XLS Formatter input port that shall be merged.</inPort>
-		<inPort index="3" name="XLS Formatter">A XLS Formatter input port that shall be merged.</inPort>
 		<outPort index="0" name="XLS Formatter">The XLS Formatter output port with the combined formatting instructions of all input ports.</outPort>
     </ports>    
 

@@ -1,7 +1,0 @@
-Manifest-Version: 1.0
-Bundle-ManifestVersion: 2
-Bundle-Name: Continental Nodes for KNIME
-Bundle-SymbolicName: com.continental.knime.feature
-Bundle-Version: 1.0.0.qualifier
-Bundle-Vendor: Continental
-Automatic-Module-Name: com.continental.knime.feature

@@ -20,6 +20,7 @@ package com.continental.knime.xlsformatter.xlscontroltablemerger;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 
 import org.knime.core.data.DataTableSpec;
 import org.knime.core.node.BufferedDataTable;
@@ -31,6 +32,7 @@ import org.knime.core.node.NodeLogger;
 import org.knime.core.node.NodeModel;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
+import org.knime.core.node.context.ports.PortsConfiguration;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
 import org.knime.core.node.port.PortType;
 
@@ -52,12 +54,27 @@ public class XlsControlTableMergerNodeModel extends NodeModel {
 	/**
 	 * Constructor for the node model.
 	 */
-	protected XlsControlTableMergerNodeModel() {
-
-		super(
-				new PortType[] { BufferedDataTable.TYPE, BufferedDataTable.TYPE },
-				new PortType[] { BufferedDataTable.TYPE });
+	public XlsControlTableMergerNodeModel() {
+		super(2, 1);
 	}
+	XlsControlTableMergerNodeModel(final int nrIns) {
+    super(getInPortTypes(nrIns), new PortType[] {BufferedDataTable.TYPE});
+  }
+	
+	XlsControlTableMergerNodeModel(final PortsConfiguration portsConfiguration) {
+    super(portsConfiguration.getInputPorts(), portsConfiguration.getOutputPorts());
+	}
+
+	private static final PortType[] getInPortTypes(final int nrIns) {
+    if (nrIns < 2) {
+    	throw new IllegalArgumentException("Invalid number of input tables (" + nrIns + "). Merge operation requires at least 2 inputs.");
+    }
+    PortType[] result = new PortType[nrIns];
+    Arrays.fill(result, BufferedDataTable.TYPE_OPTIONAL);
+    result[0] = BufferedDataTable.TYPE;
+    result[1] = BufferedDataTable.TYPE;
+    return result;
+}
 
 	/**
 	 * {@inheritDoc}
@@ -65,13 +82,16 @@ public class XlsControlTableMergerNodeModel extends NodeModel {
 	protected BufferedDataTable[] execute(BufferedDataTable[] inData, 
 			final ExecutionContext exec) throws Exception {
 
-		if (!XlsFormatterControlTableValidator.isControlTable(inData[0], exec, logger))
-			throw new Exception("Top table is not a XLS Formatter Control Table. See log for details.");
-		if (!XlsFormatterControlTableValidator.isControlTable(inData[1], exec, logger))
-			throw new Exception("Bottom table is not a XLS Formatter Control Table. See log for details.");
+		for (int i = 0; i < inData.length; i++)
+			if (!XlsFormatterControlTableValidator.isControlTable(inData[i], exec, logger))
+				throw new Exception("Input table " + (i+1) + " is not a XLS Formatter Control Table. See log for details.");
 
-		return new BufferedDataTable[] { XlsFormatterControlTableCreateTools.merge(inData[0], inData[1],
-				Modes.getFromString(m_mode.getStringValue()) == Modes.OVERWRITE, exec, logger) };
+		BufferedDataTable currentTable = inData[0];
+		for (int i = 1; i < inData.length; i++)
+			currentTable = XlsFormatterControlTableCreateTools.merge(currentTable, inData[i],
+					Modes.getFromString(m_mode.getStringValue()) == Modes.OVERWRITE, exec, logger);
+		
+		return new BufferedDataTable[] { currentTable };
 	}
 
 
@@ -79,14 +99,14 @@ public class XlsControlTableMergerNodeModel extends NodeModel {
 	protected DataTableSpec[] configure(final DataTableSpec[] inSpecs)
 			throws InvalidSettingsException {
 
-		if (!XlsFormatterControlTableValidator.isControlTableSpec(inSpecs[0], logger))
-			throw new InvalidSettingsException("The top input table header is not that of a valid XLS Formatting control table. See log for details.");
-		if (!XlsFormatterControlTableValidator.isControlTableSpec(inSpecs[1], logger))
-			throw new InvalidSettingsException("The bottom input table header is not that of a valid XLS Formatting control table. See log for details.");
-
-		int topWidth = inSpecs[0].getNumColumns();
-		int bottomWidth = inSpecs[1].getNumColumns();
-		int width = Math.max(topWidth, bottomWidth);
+		int width = -1;
+		for (int i = 0; i < inSpecs.length; i++) {
+			if (!XlsFormatterControlTableValidator.isControlTableSpec(inSpecs[i], logger))
+				throw new InvalidSettingsException("Input table header " + (i+1) + " is not that of a valid XLS Formatting control table. See log for details.");
+			
+			if (inSpecs[i].getNumColumns() > width)
+				width = inSpecs[i].getNumColumns();
+		}
 
 		return new DataTableSpec[] { XlsFormatterControlTableCreateTools.createDataTableSpec(width) };
 	}

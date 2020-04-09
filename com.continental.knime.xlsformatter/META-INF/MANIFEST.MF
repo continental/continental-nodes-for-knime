@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Continental Nodes for KNIME
 Bundle-SymbolicName: com.continental.knime.xlsformatter;singleton:=true
-Bundle-Version: 1.1.0.qualifier
+Bundle-Version: 1.2.0.qualifier
 Bundle-ClassPath: xlsformatter.jar
 Bundle-Activator: com.continental.knime.xlsformatter.apply.XlsFormatterApplyNodePlugin
 Bundle-Vendor: Continental
@@ -14,7 +14,9 @@ Require-Bundle: org.eclipse.core.runtime,
  org.knime.core.util;bundle-version="[5.10.0,6.0.0)",
  org.apache.commons.lang3;bundle-version="[3.3.1,4.0.0)",
  org.knime.product;bundle-version="[3.7.0,5.0.0)",
- org.apache.servicemix.bundles.poi;bundle-version="[3.17.0,4.0.0)"
+ org.apache.servicemix.bundles.poi;bundle-version="[3.17.0,4.0.0)",
+ org.knime.base.filehandling;bundle-version="[3.7.0,5.0.0)",
+ org.knime.datageneration;bundle-version="[3.7.0,5.0.0)"
 Bundle-ActivationPolicy: lazy
 Export-Package: com.continental.knime.xlsformatter.apply,
  com.continental.knime.xlsformatter.borderformatter,
@@ -25,6 +27,7 @@ Export-Package: com.continental.knime.xlsformatter.apply,
  com.continental.knime.xlsformatter.conditionalformatter,
  com.continental.knime.xlsformatter.fontformatter,
  com.continental.knime.xlsformatter.portmerger,
+ com.continental.knime.xlsformatter.portmerger2,
  com.continental.knime.xlsformatter.porttype,
  com.continental.knime.xlsformatter.rowcolumnsizer,
  com.continental.knime.xlsformatter.sheetproperties,
