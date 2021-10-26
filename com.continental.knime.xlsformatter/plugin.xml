@@ -107,9 +107,14 @@
       </node>
       <node
             category-path="/community/continental.nodes.for.knime/xlsformatter/"
-            deprecated="false"
+            deprecated="true"
             factory-class="com.continental.knime.xlsformatter.apply.XlsFormatterApplyNodeFactory"
             id="com.continental.knime.xlsformatter.apply.XlsFormatterApplyNodeFactory">
+      </node>
+      <node
+            category-path="/community/continental.nodes.for.knime/xlsformatter/"
+            deprecated="false"
+            factory-class="com.continental.knime.xlsformatter.apply2.XlsFormatterApplyNodeFactory">
       </node>
       <node
             category-path="/community/continental.nodes.for.knime/xlsformatter/controltable/"

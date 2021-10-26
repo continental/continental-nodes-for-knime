@@ -18,9 +18,12 @@
 
 package com.continental.knime.xlsformatter.apply;
 
+import java.io.BufferedOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -56,6 +59,7 @@ import org.apache.poi.xssf.usermodel.XSSFHyperlink;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.knime.core.node.ExecutionContext;
 import org.knime.core.node.NodeLogger;
+import org.knime.filehandling.core.util.CheckedExceptionSupplier;
 import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTSheetViews;
 import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTWorksheet;
 
@@ -96,25 +100,53 @@ public class XlsFormatterApplyLogic {
 	}
 	
 	/**
-	 * Applies an XLS Formatting instruction object to an xlsx file. 
-	 * @param destinationFile The file path of the existing xlsx file to modify.
-	 * @param xlsf The XLS Formatting instructions object.
-	 * @param exec The execution context (for aborting the operation and providing progress information). 
-	 * @throws IOException 
+	 * Applies an XLS Formatting instruction object to an xlsx file.
+	 * 
+	 * @param inputFile  the input file.
+	 * @param outputFile The file path of the existing xlsx file to modify.
+	 * @param xlsf       The XLS Formatting instructions object.
+	 * @param exec       The execution context (for aborting the operation and
+	 *                   providing progress information).
+	 * @param logger     the node logger.
+	 * @throws IOException
+	 */
+	public static void apply(final String inputFile, final String outputFile, final XlsFormatterState xlsf,
+			WarningMessageContainer warningMessageContainer, final ExecutionContext exec, final NodeLogger logger)
+			throws Exception {
+		apply(inputFile, //
+				() -> new FileInputStream(inputFile), //
+				() -> new FileOutputStream(outputFile), //
+				xlsf, //
+				warningMessageContainer, //
+				exec, //
+				logger);
+	}
+
+	/**
+	 * Applies an XLS Formatting instruction object to an xlsx file.
+	 * 
+	 * @param inputFile  the input file name.
+	 * @param openInput  creates the input stream to read from.
+	 * @param openOutput create the output stream to write to.
+	 * @param xlsf       The XLS Formatting instructions object.
+	 * @param exec       The execution context (for aborting the operation and
+	 *                   providing progress information).
+	 * @param logger     the node logger.
+	 * @throws IOException
 	 */
 	public static void apply(
 			final String inputFile,
-			final String outputFile,
+			final CheckedExceptionSupplier<InputStream, IOException> openInput,
+			final CheckedExceptionSupplier<OutputStream, IOException> openOutput,
 			final XlsFormatterState xlsf,
 			WarningMessageContainer warningMessageContainer,
 			final ExecutionContext exec, final NodeLogger logger) throws Exception {
-		
 		// Open the file
 		Workbook wb = null;
 		CreationHelper createHelper = null;
 		exec.setProgress("Opening input file...");
-		try (FileInputStream inputFileStream = new FileInputStream(inputFile)) {
-			wb = WorkbookFactory.create(new FileInputStream(inputFile)); // returns XSSF workbook for XSLX files
+		try (InputStream inputFileStream = openInput.get()) {
+			wb = WorkbookFactory.create(inputFileStream); // returns XSSF workbook for XSLX files
 			createHelper = wb.getCreationHelper();
 		}
 		catch (Exception e) {
@@ -413,10 +445,11 @@ public class XlsFormatterApplyLogic {
 		
 		// Write the output to a file:
 		exec.setProgress("Writing output file...");
-		try (FileOutputStream fileOut = new FileOutputStream(outputFile)) {
-			wb.write(fileOut);
+		try (OutputStream fileOut = openOutput.get();
+				BufferedOutputStream bufOut = new BufferedOutputStream(fileOut);) {
+			wb.write(bufOut);
 		}
-  }
+	}
 	
 	
 	/**

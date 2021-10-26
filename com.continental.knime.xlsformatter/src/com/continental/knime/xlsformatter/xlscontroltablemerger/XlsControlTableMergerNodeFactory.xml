@@ -18,6 +18,11 @@
     <ports>
         <inPort index="0" name="Control Table">XLS Control Table (holding tags used to select cells to be formatted by many XLS Formatting nodes).</inPort>
         <inPort index="1" name="Control Table">XLS Control Table (holding tags used to select cells to be formatted by many XLS Formatting nodes).</inPort>
+        
+        <dynInPort insert-before="2" name="Additional Control Table" group-identifier="input">
+        	XLS Control Table (holding tags used to select cells to be formatted by many XLS Formatting nodes).
+        </dynInPort>
+        
         <outPort index="0" name="Control Table">XLS Control Table (holding tags used to select cells to be formatted by many XLS Formatting nodes).</outPort>
     </ports>
     

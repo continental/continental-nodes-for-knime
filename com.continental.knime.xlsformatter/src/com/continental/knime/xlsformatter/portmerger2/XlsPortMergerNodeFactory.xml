@@ -21,6 +21,11 @@
     <ports>
 		<inPort index="0" name="XLS Formatter">A XLS Formatter input port that shall be merged.</inPort>
 		<inPort index="1" name="XLS Formatter">A XLS Formatter input port that shall be merged.</inPort>
+		
+		<dynInPort insert-before="2" name="Additional XLS Formatter port" group-identifier="input">
+        	A XLS Formatter input port that shall be merged.
+        </dynInPort>
+		
 		<outPort index="0" name="XLS Formatter">The XLS Formatter output port with the combined formatting instructions of all input ports.</outPort>
     </ports>    
 

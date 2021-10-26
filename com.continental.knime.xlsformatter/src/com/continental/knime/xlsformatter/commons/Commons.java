@@ -27,6 +27,7 @@ public class Commons {
 	/**
 	 * Resolves a file path to a local path, esp. in regards to knime://knime.workflow/ syntax.
 	 */
+	@Deprecated
 	public static String resolveKnimePath(String path) throws IOException, URISyntaxException {
 		if (path.startsWith("knime:"))
 			return org.knime.core.util.pathresolve.ResolverUtil.resolveURItoLocalFile(new URI("knime", path.substring(6), null)).getAbsolutePath();
@@ -39,7 +40,7 @@ public class Commons {
 	 */
 	public static Integer parseIntSilently(String value) {
 		try {
-			return new Integer(Integer.parseInt(value));
+			return Integer.valueOf(Integer.parseInt(value));
 		}
 		catch (NumberFormatException ne) {
 			return null;
@@ -51,7 +52,7 @@ public class Commons {
 	 */
 	public static int parseInt(String value) throws IllegalArgumentException {
 		try {
-			return new Integer(Integer.parseInt(value));
+			return Integer.valueOf(Integer.parseInt(value));
 		}
 		catch (NumberFormatException ne) {
 			throw new IllegalArgumentException("Expected an integer value (i.e. a whole number), but saw \"" + value + "\".");

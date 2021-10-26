@@ -81,6 +81,7 @@ public class XlsFormatterApplyNodeModel extends NodeModel {
 	/**
 	 * {@inheritDoc}
 	 */
+	@SuppressWarnings("deprecation")
 	protected PortObject[] execute(PortObject[] inObjects,
 			final ExecutionContext exec) throws Exception {
 
@@ -113,6 +114,7 @@ public class XlsFormatterApplyNodeModel extends NodeModel {
 		return new PortObject[] {};
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	protected PortObjectSpec[] configure(final PortObjectSpec[] inSpecs)
 			throws InvalidSettingsException {   	

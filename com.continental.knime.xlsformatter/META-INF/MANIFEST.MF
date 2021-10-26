@@ -2,20 +2,21 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Continental Nodes for KNIME
 Bundle-SymbolicName: com.continental.knime.xlsformatter;singleton:=true
-Bundle-Version: 1.2.0.qualifier
+Bundle-Version: 1.3.0.qualifier
 Bundle-ClassPath: xlsformatter.jar
 Bundle-Activator: com.continental.knime.xlsformatter.apply.XlsFormatterApplyNodePlugin
 Bundle-Vendor: Continental
 Require-Bundle: org.eclipse.core.runtime,
  org.knime.workbench.core;bundle-version="[3.7.0,5.0.0)",
  org.knime.workbench.repository;bundle-version="[3.7.0,5.0.0)",
- org.knime.base;bundle-version="[3.7.0,5.0.0)",
- org.knime.core;bundle-version="[3.7.0,5.0.0)",
+ org.knime.base;bundle-version="[4.4.0,5.0.0)",
+ org.knime.core;bundle-version="[4.4.0,5.0.0)",
  org.knime.core.util;bundle-version="[5.10.0,6.0.0)",
  org.apache.commons.lang3;bundle-version="[3.3.1,4.0.0)",
  org.knime.product;bundle-version="[3.7.0,5.0.0)",
  org.apache.servicemix.bundles.poi;bundle-version="[3.17.0,4.0.0)",
  org.knime.base.filehandling;bundle-version="[3.7.0,5.0.0)",
+ org.knime.filehandling.core;bundle-version="[4.4.0,5.0.0)",
  org.knime.datageneration;bundle-version="[3.7.0,5.0.0)"
 Bundle-ActivationPolicy: lazy
 Export-Package: com.continental.knime.xlsformatter.apply,
@@ -35,3 +36,4 @@ Export-Package: com.continental.knime.xlsformatter.apply,
  com.continental.knime.xlsformatter.xlscontroltablefromcellrange,
  com.continental.knime.xlsformatter.xlscontroltablegenerator,
  com.continental.knime.xlsformatter.xlscontroltablemerger
+Import-Package: org.w3c.dom.events;version="[3.0.0,4.0.0)"
