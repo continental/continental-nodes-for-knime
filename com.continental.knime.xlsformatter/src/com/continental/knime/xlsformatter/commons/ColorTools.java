@@ -60,8 +60,8 @@ public class ColorTools {
 	/**
 	 * Creates a POI color from a java.awt.Color, which is used as Xls Formatter State internal color representation.
 	 */
-	public static XSSFColor getPoiColor(Color color) {
-		return new XSSFColor(color); 		
+	public static XSSFColor getPoiColor(Color color) { 
+		return new XSSFColor(color, null);
 	}
 	
 	/**

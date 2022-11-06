@@ -154,7 +154,7 @@ public class XlsFormatterApplyLogic {
 		}
 		
 		int numberOfPreviousStyles = wb.getNumCellStyles();
-		logger.debug(numberOfPreviousStyles + " previous style(s) and " + wb.getNumberOfFonts() + " font(s) found in input file " + inputFile); 
+		logger.debug(numberOfPreviousStyles + " previous style(s) and " + wb.getNumberOfFontsAsInt() + " font(s) found in input file " + inputFile); 
 		
 		if (numberOfPreviousStyles > ALLOWED_PREVIOUS_STYLES) {
 			
@@ -216,7 +216,7 @@ public class XlsFormatterApplyLogic {
 				// if the data type shall be converted from a String cell to something else, do it before setting the style
 				CellState state = xlsfs.cells.get(cellAddress);
 				if (state != null && state.cellDataType != XlsFormatterState.CellDataType.UNMODIFIED) {
-					if (cell.getCellTypeEnum() == CellType.STRING)
+					if (cell.getCellType() == CellType.STRING)
 						switch (state.cellDataType) {
 						case NUMERIC:
 							double value;
@@ -340,7 +340,7 @@ public class XlsFormatterApplyLogic {
 							if (r != range.getFirstRow() || c != range.getFirstColumn()) {
 								cell = row.getCell(c);
 								if (cell != null) {
-									cell.setCellType(CellType.BLANK);
+									cell.setBlank();
 									cell.removeCellComment();
 									cell.removeHyperlink();
 								}
