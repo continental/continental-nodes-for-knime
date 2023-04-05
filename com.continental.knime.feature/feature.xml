@@ -2,7 +2,7 @@
 <feature
       id="com.continental.knime.feature"
       label="Continental Nodes for KNIME"
-      version="1.4.0.qualifier"
+      version="1.4.1.qualifier"
       provider-name="Continental">
 
    <description>
@@ -10,7 +10,7 @@
    </description>
 
    <copyright>
-      Copyright (c) 2021 Continental Corporation. All rights reserved.
+      Copyright (c) 2023 Continental Corporation. All rights reserved.
    </copyright>
 
    <license url="http://www.gnu.org/licenses/gpl-3.0.html">
