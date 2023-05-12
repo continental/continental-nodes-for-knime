@@ -38,3 +38,5 @@ Export-Package: com.continental.knime.xlsformatter.apply,
  com.continental.knime.xlsformatter.xlscontroltablefromcellrange,
  com.continental.knime.xlsformatter.xlscontroltablegenerator,
  com.continental.knime.xlsformatter.xlscontroltablemerger
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Automatic-Module-Name: com.continental.knime.xlsformatter

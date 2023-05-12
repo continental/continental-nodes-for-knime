@@ -14,3 +14,5 @@ Require-Bundle: org.eclipse.core.runtime,
  org.knime.product;bundle-version="[3.7.0,6.0.0)"
 Bundle-ActivationPolicy: lazy
 Export-Package: com.continental.knime.utility.networkcomponentsplitter
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Automatic-Module-Name: com.continental.knime.utility
