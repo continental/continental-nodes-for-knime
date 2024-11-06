@@ -99,7 +99,7 @@ public class XlsFormatterApplyNodeModel extends NodeModel {
 			
 			WarningMessageContainer warningMessageContainer = new WarningMessageContainer(); // used to sneak out a warning from apply()
 			XlsFormatterApplyLogic.apply(in, out,
-					state, warningMessageContainer, exec, logger);
+					state, false, warningMessageContainer, exec, logger);
 			if (warningMessageContainer.hasMessage())
 				setWarningMessage(warningMessageContainer.getMessage());
 		}

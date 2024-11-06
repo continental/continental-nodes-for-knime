@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./fiforesolver.png" type="Manipulator" xmlns="http://knime.org/node/v2.8" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://knime.org/node/v2.10 http://knime.org/node/v2.10.xsd">
+    <name>FIFO / LIFO Resolver</name>
+    
+    <shortDescription>
+        
+    </shortDescription>
+    
+    <fullDescription>
+        <intro>This node analyzes an existing queue of quantitative items flowing in and out. It resolves the history of this queue under the assumption that all outflow follows one of the first-in-first-out (FIFO) or last-in-first-out (LIFO) principles. Thereby the quantitative nature of each item can be split, meaning parts of items' values flowing out at different points in time.
+        <p /> 
+        The node includes an inbuilt grouping mechanism as typical application scenarios will not desire to iterate over the entire input table. (In case the user does not need a grouping, a constant value column should be added prior to usage and be selected as group column.)
+        <p /> 
+        The input table represents the history of the queue with positive values indicating inflow and negative values indicating outflow. Each output table row represents a match of two input table rows, namely the inflow and corresponding outflow rows of the represented quantity. Thereby, each in- and outflow can be split into several chunks, depending on the consistency of in- and outflow batches. If not all inflow is subsequently flowing out, the remaining queue inventory is displayed with missing outflow information but with its inflow origin.
+		<p /> 
+		E.g. a queue history of 4, 3, -5 in input table rows Row1 to Row3 will lead to the result:<br />
+		● RowId_IN 'Row1', RowId_OUT 'Row3', quantity 4<br /> 
+		● RowId_IN 'Row2', RowId_OUT 'Row3', quantity 1<br /> 
+		● RowId_IN 'Row2', RowId_OUT missing, quantity 2<br /> 
+		<p /> 
+		Examples for this node's applicability are:<br /> 
+	    ● In warehousing, maximal duration of storage can be calculated in order to avoid passing best-before-dates.<br /> 
+	    ● In finance and tax, stock positions can be resolved in order to calculate a sell's counterpart in the buy-history and calculating corresponding position profit and holding duration.<br />
+	    ● In service operations, backlogs can be analyzed for processing statistics.<br />
+         
+		</intro>
+		<tab name ="Type of Queue to Resolve">
+        	<option name="FIFO">The queue is analyzed as if the first-in-first-out principle was applied, e.g. a supermarket queue</option>
+        	<option name="LIFO">The queue is analyzed as if the last-in-first-out principle was applied, e.g. a box that can only be filled and emptied from one side.</option>
+        </tab>
+        <tab name ="Column Selection">
+        	<option name="Select Grouping Column">Name of the input table column used for grouping. Per unique value in this column, queues are analyzed independently. E.g. use a material number column here for a logistics use case.</option>
+        	<option name="Select Quantity Column">Name of the input table column that holds the quantity of each operation. E.g. use a 'number of stocks' column here for a finance/tax use case.</option>
+        </tab>
+		<tab name ="Exception Handling">
+        	<option name="Fail at queuing inconsistency, i.e. more OUT than prior IN">If checked, an inconsistent queue history will lead to an error in node execution. The only inconsistency analyzed is higher total outflow quantity than prior inflow quantity. E.g. a queue history of 2, 2, -5, 3 would trigger this, because the outflowing 5 are exceeding the 4 pieces in the queue at that moment. If unchecked, the queue resolution will add a missing value in the RowId_IN output column.</option>
+        </tab>
+
+    </fullDescription>
+    
+    <ports>
+        <inPort index="0" name="Queue History Table">Table which includes the history of multiple groups' queues. It requires at least one String-typed column for the group and one number-typed column for the quantities. The sort order of this input table is important as it is inherently treated as time dimension in queue resolution (from top to bottom).</inPort>
+        <outPort index="0" name="FIFO/LIFO Resolved List">The output table represents the split of quantitative chunks and their association from inflow to outflow. The input table rows are identified via their RowID. The RowId_IN and RowId_OUT columns will hence typically be used to join back in required meta information from the input table, e.g. event dates.</outPort>
+    </ports>    
+
+</knimeNode>

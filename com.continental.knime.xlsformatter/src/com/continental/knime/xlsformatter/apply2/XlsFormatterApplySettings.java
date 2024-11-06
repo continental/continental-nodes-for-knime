@@ -38,6 +38,8 @@ final class XlsFormatterApplySettings {
 	private final SettingsModelWriterFileChooser m_target;
 
 	private final SettingsModelBoolean m_openOutputFile;
+	
+	private final SettingsModelBoolean m_preserveSourceNumberFormats;
 
 	XlsFormatterApplySettings(final PortsConfiguration portsCfg, final String srcGrpName, final String tgtGrpName) {
 		m_source = new SettingsModelReaderFileChooser("InputFile", portsCfg, srcGrpName,
@@ -46,6 +48,7 @@ final class XlsFormatterApplySettings {
 				EnumConfig.create(FilterMode.FILE),
 				EnumConfig.create(FileOverwritePolicy.FAIL, FileOverwritePolicy.OVERWRITE), FILE_EXTENSION);
 		m_openOutputFile = new SettingsModelBoolean("OpenOutputFile", false);
+		m_preserveSourceNumberFormats = new SettingsModelBoolean("PreserveSourceNumberFormats", true);
 	}
 
 	SettingsModelReaderFileChooser getSrcFileChooser() {
@@ -59,22 +62,35 @@ final class XlsFormatterApplySettings {
 	SettingsModelBoolean getOpenOutputFileSettingsModel() {
 		return m_openOutputFile;
 	}
+	
+	SettingsModelBoolean getPreserveSourceNumberFormatsSettingsModel() {
+		return m_preserveSourceNumberFormats;
+	}
 
 	void saveSettingsInModel(final NodeSettingsWO settings) {
 		m_source.saveSettingsTo(settings);
 		m_target.saveSettingsTo(settings);
 		m_openOutputFile.saveSettingsTo(settings);
+		m_preserveSourceNumberFormats.saveSettingsTo(settings);
 	}
 
 	void validateSettingsInModel(final NodeSettingsRO settings) throws InvalidSettingsException {
 		m_source.validateSettings(settings);
 		m_target.validateSettings(settings);
 		m_openOutputFile.validateSettings(settings);
+		if (settings.containsKey("PreserveSourceNumberFormats"))
+			m_preserveSourceNumberFormats.validateSettings(settings);
+		else
+			m_preserveSourceNumberFormats.setBooleanValue(false);  // ensures that workflows saved before August 2024 still behave consistently
 	}
 
 	void loadSettingsInModel(final NodeSettingsRO settings) throws InvalidSettingsException {
 		m_source.loadSettingsFrom(settings);
 		m_target.loadSettingsFrom(settings);
 		m_openOutputFile.loadSettingsFrom(settings);
+		if (settings.containsKey("PreserveSourceNumberFormats"))
+			m_preserveSourceNumberFormats.loadSettingsFrom(settings);
+		else
+			m_preserveSourceNumberFormats.setBooleanValue(false);  // ensures that workflows saved before August 2024 still behave consistently
 	}
 }

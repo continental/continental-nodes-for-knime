@@ -47,8 +47,10 @@ final class XlsFormatterApplyNodeDialog extends NodeDialogPane {
 	private final DialogComponentWriterFileChooser m_target;
 
 	private final DialogComponentBoolean m_openOutputFile;
-
 	private final JLabel m_openOutputFileLbl;
+	
+	private final DialogComponentBoolean m_preserveSourceNumberFormats;
+	
 
 	XlsFormatterApplyNodeDialog(final XlsFormatterApplySettings settings) {
 		final SettingsModelReaderFileChooser srcFileChooser = settings.getSrcFileChooser();
@@ -57,6 +59,8 @@ final class XlsFormatterApplyNodeDialog extends NodeDialogPane {
 		final SettingsModelWriterFileChooser tgtFileChooser = settings.getTgtFileChooser();
 		m_target = new DialogComponentWriterFileChooser(tgtFileChooser, "xls_apply",
 				createFlowVariableModel(tgtFileChooser.getKeysForFSLocation(), FSLocationVariableType.INSTANCE));
+		m_preserveSourceNumberFormats = new DialogComponentBoolean(settings.getPreserveSourceNumberFormatsSettingsModel(),
+				"preserve source file's cell number formats (e.g. date cells written by KNIME)");
 		m_openOutputFile = new DialogComponentBoolean(settings.getOpenOutputFileSettingsModel(),
 				"open output file after execution");
 		m_openOutputFileLbl = new JLabel("");
@@ -72,6 +76,8 @@ final class XlsFormatterApplyNodeDialog extends NodeDialogPane {
 				.insetLeft(5);
 		p.add(createSourcePanel(), gbc.build());
 		p.add(createDestinationPanel(), gbc.incY().build());
+		p.add(m_preserveSourceNumberFormats.getComponentPanel(),
+				gbc.incY().setWidth(1).setWeightX(0).fillNone().insetLeft(0).build());
 		p.add(m_openOutputFile.getComponentPanel(),
 				gbc.incY().setWidth(1).setWeightX(0).fillNone().insetLeft(0).build());
 		p.add(m_openOutputFileLbl, gbc.incX().insetLeft(5).build());
@@ -118,7 +124,7 @@ final class XlsFormatterApplyNodeDialog extends NodeDialogPane {
 		m_source.saveSettingsTo(settings);
 		m_target.saveSettingsTo(settings);
 		m_openOutputFile.saveSettingsTo(settings);
-
+		m_preserveSourceNumberFormats.saveSettingsTo(settings);
 	}
 
 	@Override
@@ -127,6 +133,7 @@ final class XlsFormatterApplyNodeDialog extends NodeDialogPane {
 		m_source.loadSettingsFrom(settings, specs);
 		m_target.loadSettingsFrom(settings, specs);
 		m_openOutputFile.loadSettingsFrom(settings, specs);
+		m_preserveSourceNumberFormats.loadSettingsFrom(settings, specs);
 		toggleOpenFileAfterExecOption();
 	}
 

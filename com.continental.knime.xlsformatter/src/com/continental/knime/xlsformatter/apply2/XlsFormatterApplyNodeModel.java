@@ -104,6 +104,7 @@ final class XlsFormatterApplyNodeModel extends NodeModel {
 						() -> FSFiles.newOutputStream(outputPath,
 								m_settings.getTgtFileChooser().getFileOverwritePolicy().getOpenOptions()),
 						state,
+						m_settings.getPreserveSourceNumberFormatsSettingsModel().getBooleanValue(),
 						warningMessageContainer,
 						exec,
 						LOGGER);

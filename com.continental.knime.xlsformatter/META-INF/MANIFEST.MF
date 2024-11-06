@@ -2,24 +2,24 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Continental Nodes for KNIME
 Bundle-SymbolicName: com.continental.knime.xlsformatter;singleton:=true
-Bundle-Version: 1.4.1.qualifier
+Bundle-Version: 1.5.0.qualifier
 Bundle-ClassPath: xlsformatter.jar
 Bundle-Activator: com.continental.knime.xlsformatter.apply.XlsFormatterApplyNodePlugin
 Bundle-Vendor: Continental
 Require-Bundle: org.eclipse.core.runtime,
- org.knime.workbench.core;bundle-version="[3.7.0,6.0.0)",
- org.knime.workbench.repository;bundle-version="[3.7.0,6.0.0)",
- org.knime.base;bundle-version="[4.4.0,6.0.0)",
- org.knime.core;bundle-version="[4.4.0,6.0.0)",
- org.knime.core.util;bundle-version="[5.10.0,6.0.0)",
- org.apache.commons.lang3;bundle-version="[3.3.1,4.0.0)",
- org.knime.product;bundle-version="[3.7.0,6.0.0)",
- org.apache.poi;bundle-version="[4.1.1,5.0.0)", 
- org.apache.poi.ooxml;bundle-version="[4.1.1,5.0.0)",
- org.apache.poi.ooxml.schemas;bundle-version="[4.1.1,5.0.0)",
- org.knime.base.filehandling;bundle-version="[3.7.0,6.0.0)",
- org.knime.filehandling.core;bundle-version="[4.4.0,6.0.0)",
- org.knime.datageneration;bundle-version="[3.7.0,6.0.0)"
+ org.knime.workbench.core;bundle-version="[5.3.0,6.0.0)",
+ org.knime.workbench.repository;bundle-version="[5.3.0,6.0.0)",
+ org.knime.base;bundle-version="[5.3.0,6.0.0)",
+ org.knime.core;bundle-version="[5.3.0,6.0.0)",
+ org.knime.core.util;bundle-version="[6.0.0,7.0.0)",
+ org.apache.commons.lang3;bundle-version="[3.14.0,4.0.0)",
+ org.knime.product;bundle-version="[5.3.0,6.0.0)",
+ org.apache.poi;bundle-version="[5.2.5,6.0.0)", 
+ org.apache.poi.ooxml;bundle-version="[5.2.5,6.0.0)",
+ org.apache.poi.ooxml.schemas;bundle-version="[5.2.5,6.0.0)",
+ org.knime.base.filehandling;bundle-version="[5.3.0,6.0.0)",
+ org.knime.filehandling.core;bundle-version="[5.3.0,6.0.0)",
+ org.knime.datageneration;bundle-version="[5.3.0,6.0.0)"
 Bundle-ActivationPolicy: lazy
 Export-Package: com.continental.knime.xlsformatter.apply,
  com.continental.knime.xlsformatter.borderformatter,
@@ -38,3 +38,5 @@ Export-Package: com.continental.knime.xlsformatter.apply,
  com.continental.knime.xlsformatter.xlscontroltablefromcellrange,
  com.continental.knime.xlsformatter.xlscontroltablegenerator,
  com.continental.knime.xlsformatter.xlscontroltablemerger
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Automatic-Module-Name: com.continental.knime.xlsformatter

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <feature id="com.continental.knime.feature" version="0.0.0">
+       <category name="continental" />
+   </feature>
+   <feature id="com.continental.knime.feature.source" version="0.0.0">
+       <category name="continental" />
+   </feature>
+
+   <category-def name="continental" label="Build artifacts from Continental">
+       <description>Build artifacts from Continental</description>
+   </category-def>
+</site>

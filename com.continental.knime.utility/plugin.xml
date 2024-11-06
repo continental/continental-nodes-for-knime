@@ -8,6 +8,10 @@
             category-path="/community/continental.nodes.for.knime/utility/"
             factory-class="com.continental.knime.utility.networkcomponentsplitter.NetworkComponentSplitterNodeFactory"
             id="com.continental.knime.networkcomponentsplitter.NetworkComponentSplitterNodeFactory"/>
+      <node
+            category-path="/community/continental.nodes.for.knime/utility/"
+            factory-class="com.continental.knime.utility.fiforesolver.FifoResolverNodeFactory"
+            id="com.continental.knime.fiforesolver.FifoResolverNodeFactory"/>
    </extension>
    <extension
          id="contiCategories"

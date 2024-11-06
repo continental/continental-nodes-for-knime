@@ -37,6 +37,7 @@ import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.ClientAnchor;
 import org.apache.poi.ss.usermodel.Color;
@@ -110,13 +111,14 @@ public class XlsFormatterApplyLogic {
 	 * @param logger     the node logger.
 	 * @throws IOException
 	 */
-	public static void apply(final String inputFile, final String outputFile, final XlsFormatterState xlsf,
+	public static void apply(final String inputFile, final String outputFile, final XlsFormatterState xlsf, final boolean preserveStyles,
 			WarningMessageContainer warningMessageContainer, final ExecutionContext exec, final NodeLogger logger)
 			throws Exception {
 		apply(inputFile, //
 				() -> new FileInputStream(inputFile), //
 				() -> new FileOutputStream(outputFile), //
 				xlsf, //
+				preserveStyles, //
 				warningMessageContainer, //
 				exec, //
 				logger);
@@ -139,6 +141,7 @@ public class XlsFormatterApplyLogic {
 			final CheckedExceptionSupplier<InputStream, IOException> openInput,
 			final CheckedExceptionSupplier<OutputStream, IOException> openOutput,
 			final XlsFormatterState xlsf,
+			final boolean preserveStyles,
 			WarningMessageContainer warningMessageContainer,
 			final ExecutionContext exec, final NodeLogger logger) throws Exception {
 		// Open the file
@@ -179,7 +182,7 @@ public class XlsFormatterApplyLogic {
 		
 		// Derive and generate necessary POI styles:
 		exec.setProgress("Adding necessary styles...");
-		StyleAnalysisResult analysisResult = deriveNecessaryStyles(wb, xlsf, exec, logger);
+		StyleAnalysisResult analysisResult = deriveNecessaryStyles(wb, xlsf, preserveStyles, exec, logger);
 		
 		// Loop all sheets
 		exec.setProgress("Applying formatting instructions...");
@@ -522,6 +525,7 @@ public class XlsFormatterApplyLogic {
 	private static StyleAnalysisResult deriveNecessaryStyles(
 			final Workbook workbook,
 			final XlsFormatterState xlsf,
+			final boolean preserveStyles,
 			final ExecutionContext exec, final NodeLogger logger) throws Exception {
 		
 		StyleAnalysisResult ret = new StyleAnalysisResult();
@@ -567,7 +571,30 @@ public class XlsFormatterApplyLogic {
 							break;
 						default:
 							break;
-						}				
+						}
+					if (targetNumberFormat == null && preserveStyles) {  // if still no number format needs to be set, check whether we need to preserve the original one in the source XLS 
+						
+						String prevFormat = null;
+						Sheet tempSheet = workbook.getSheet(sheetStateEntry.getKey());
+						if (tempSheet != null) {
+							Row tempRow = tempSheet.getRow(cellAddress.getRow());
+							if (tempRow != null) {
+								Cell tempCell = tempRow.getCell(cellAddress.getColumn());
+								if (tempCell != null) {
+									CellStyle tempCellStyle = tempCell.getCellStyle();
+									if (tempCellStyle != null)
+										prevFormat = tempCellStyle.getDataFormatString();
+								}
+							}
+						}
+						
+						
+						try {
+							prevFormat = workbook.getSheet(sheetStateEntry.getKey()).getRow(cellAddress.getRow()).getCell(cellAddress.getColumn()).getCellStyle().getDataFormatString();
+						} catch (Exception e) {}						
+						if (prevFormat != null && prevFormat != "" && prevFormat != "General")
+							targetNumberFormat = prevFormat;
+					}
 					Integer numberFormatCode = null;
 					if (targetNumberFormat != null) {
 						if (numberFormatMap.containsKey(targetNumberFormat))
@@ -576,6 +603,10 @@ public class XlsFormatterApplyLogic {
 							numberFormatCode = workbook == null ? -1 : (int)workbook.createDataFormat().getFormat(targetNumberFormat);
 							numberFormatMap.put(targetNumberFormat, numberFormatCode);
 						}
+						
+						// update cellShortString due to style caching below
+						state.textFormat = targetNumberFormat;
+						cellShortString = state.cellFormatToShortString(true, true);
 					}
 					
 					int currentStyleId = -1;
@@ -629,7 +660,7 @@ public class XlsFormatterApplyLogic {
 				throw new Exception("Could not create POI style. " + e.getClass().getCanonicalName() + ":" + e.getMessage(), e);
 			}
 		}
-				
+		
 		return ret;
 	}
 	
@@ -642,7 +673,7 @@ public class XlsFormatterApplyLogic {
 		StyleAnalysisResult res = null;
 		
 		try {
-			res = deriveNecessaryStyles(null, state, exec, logger); // calling with workbook==null means that only xlsArtifactCount will be populated in the returned analysisResult
+			res = deriveNecessaryStyles(null, state, false, exec, logger); // calling with workbook==null means that only xlsArtifactCount will be populated in the returned analysisResult
 		} catch (Exception e) {
 			return "Error during calculation of required instructions / styles.";
 		}
@@ -664,7 +695,7 @@ public class XlsFormatterApplyLogic {
 			final ExecutionContext exec, final NodeLogger logger) throws Exception {
 		
 		StyleAnalysisResult res = null;
-		res = deriveNecessaryStyles(null, state, exec, logger); // calling with workbook==null means that only xlsArtifactCount will be populated in the returned analysisResult
+		res = deriveNecessaryStyles(null, state, false, exec, logger); // calling with workbook==null means that only xlsArtifactCount will be populated in the returned analysisResult
 		
 		if (res.xlsArtifactCount.StyleCount > XlsFormattingStateValidator.MAX_CELL_STYLES_PER_WORKBOOK - ALLOWED_PREVIOUS_STYLES)
 			throw new Exception("The XLS Formatter port object has been loaded with more instructions / cell styles (" + res.xlsArtifactCount.StyleCount + ") than can be implemented in an XLS workbook (" + XlsFormattingStateValidator.MAX_CELL_STYLES_PER_WORKBOOK + ").");
