@@ -87,14 +87,8 @@ public class FifoResolverNodeLogic {
 					row.getCell(colIndexGroup).isMissing() || row.getCell(colIndexGroup).getType() != StringCell.TYPE ? null
 							: row.getCell(colIndexGroup).toString();
 			Double qty = null;
-			if (!(row.getCell(colIndexQty).isMissing() || !row.getCell(colIndexQty).getType().isCompatible(DoubleValue.class))) {
-				if (qtyNumberTypeString == "Number (long)")
-					qty = ((LongCell)row.getCell(colIndexQty)).getDoubleValue();
-				else if (qtyNumberTypeString == "Number (integer)")
-					qty = ((IntCell)row.getCell(colIndexQty)).getDoubleValue();
-				else
-					qty = ((DoubleCell)row.getCell(colIndexQty)).getDoubleValue();
-			}
+			if (!(row.getCell(colIndexQty).isMissing() || !row.getCell(colIndexQty).getType().isCompatible(DoubleValue.class)))
+				qty = ((DoubleValue)row.getCell(colIndexQty)).getDoubleValue();
 			
 			String rowId = row.getKey().getString();
 			
