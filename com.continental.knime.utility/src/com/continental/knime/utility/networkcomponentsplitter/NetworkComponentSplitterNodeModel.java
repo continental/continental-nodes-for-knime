@@ -24,7 +24,6 @@ import java.io.IOException;
 import org.knime.core.data.DataColumnSpec;
 import org.knime.core.data.DataTableSpec;
 import org.knime.core.data.DataType;
-import org.knime.core.data.StringValue;
 import org.knime.core.data.def.IntCell;
 import org.knime.core.data.def.StringCell;
 import org.knime.core.node.BufferedDataTable;
@@ -48,13 +47,13 @@ public class NetworkComponentSplitterNodeModel extends NodeModel {
 
 	// Input Node1 Column Selection
 	static final String CFGKEY_COLUM_NAME1 = "InputCol1";
-	static final String DEFAULT_COLUMN_NAME1 = "Node1";
+	static final String DEFAULT_COLUMN_NAME1 = "Node1_not_configured_but_model_default";
 	final SettingsModelColumnName m_inputColumnName1 =
 			new SettingsModelColumnName(CFGKEY_COLUM_NAME1, DEFAULT_COLUMN_NAME1);
 
 	// Input Node2 Column Selection
 	static final String CFGKEY_COLUMN_NAME2 = "InputCol2";
-	static final String DEFAULT_COLUMN_NAME2 = "Node2";
+	static final String DEFAULT_COLUMN_NAME2 = "Node2_not_configured_but_model_default";
 	final SettingsModelColumnName m_inputColumnName2 =
 			new SettingsModelColumnName(CFGKEY_COLUMN_NAME2, DEFAULT_COLUMN_NAME2);
 
@@ -119,7 +118,7 @@ public class NetworkComponentSplitterNodeModel extends NodeModel {
 		String[] inNames = new String[2];
 		for (int i = 0; i < inSpecs[IN_PORT].getNumColumns(); i++) {
 			DataColumnSpec columnSpec = inSpecs[IN_PORT].getColumnSpec(i);
-			if (columnSpec.getType().isCompatible(StringValue.class)) {
+			if (columnSpec.getType().getCellClass().equals(StringCell.class)) {
 				inNames[numberStringColumns] = columnSpec.getName();
 				numberStringColumns++;
 			}

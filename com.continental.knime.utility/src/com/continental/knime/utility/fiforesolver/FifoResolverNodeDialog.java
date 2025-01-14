@@ -18,9 +18,10 @@
 
 package com.continental.knime.utility.fiforesolver;
 
-import org.knime.core.data.StringValue;
+import org.knime.core.data.def.StringCell;
 import org.knime.core.data.IntValue;
 import org.knime.core.data.LongValue;
+import org.knime.core.data.DataColumnSpec;
 import org.knime.core.data.DoubleValue;
 import org.knime.core.node.defaultnodesettings.DefaultNodeSettingsPane;
 import org.knime.core.node.defaultnodesettings.DialogComponentBoolean;
@@ -29,6 +30,7 @@ import org.knime.core.node.defaultnodesettings.DialogComponentColumnNameSelectio
 import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
 import org.knime.core.node.defaultnodesettings.SettingsModelColumnName;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
+import org.knime.core.node.util.ColumnFilter;
 
 
 public class FifoResolverNodeDialog extends DefaultNodeSettingsPane {
@@ -54,11 +56,22 @@ public class FifoResolverNodeDialog extends DefaultNodeSettingsPane {
 		this.addDialogComponent(modeComponent);
 		setHorizontalPlacement(false);
 		
+		ColumnFilter pureStringColumnFilter = new ColumnFilter() {
+            @Override
+            public boolean includeColumn(DataColumnSpec columnSpec) {
+                return columnSpec.getType().getCellClass().equals(StringCell.class);
+            }
+            @Override
+            public String allFilteredMsg() {
+                return "No String columns available.";
+            }
+        };
+		
 		// create Column Selection Pane
 		this.createNewGroup("Column Selection");
 		inputColumnGroup = new SettingsModelColumnName(FifoResolverNodeModel.CFGKEY_COLUM_NAME_GROUP, FifoResolverNodeModel.DEFAULT_COLUMN_NAME_GROUP);
 		this.addDialogComponent(new DialogComponentColumnNameSelection(
-				inputColumnGroup, "Select Grouping Column", 0, true, StringValue.class));
+				inputColumnGroup, "Select Grouping Column", 0, true, pureStringColumnFilter));
 		inputColumnQty = new SettingsModelColumnName(FifoResolverNodeModel.CFGKEY_COLUMN_NAME_QTY, FifoResolverNodeModel.DEFAULT_COLUMN_NAME_QTY);
 		this.addDialogComponent(new DialogComponentColumnNameSelection(
 				inputColumnQty, "Select Quantity Column (positive values mean INCOMING, negative OUTGOING)", 0, true, IntValue.class, LongValue.class, DoubleValue.class));

@@ -25,7 +25,6 @@ import org.knime.core.data.DataColumnSpec;
 import org.knime.core.data.DataTableSpec;
 import org.knime.core.data.DataType;
 import org.knime.core.data.DoubleValue;
-import org.knime.core.data.StringValue;
 import org.knime.core.data.def.StringCell;
 import org.knime.core.node.BufferedDataTable;
 import org.knime.core.node.CanceledExecutionException;
@@ -56,13 +55,13 @@ public class FifoResolverNodeModel extends NodeModel {
 	
 	// Input Group Column Selection
 	static final String CFGKEY_COLUM_NAME_GROUP = "GroupCol";
-	static final String DEFAULT_COLUMN_NAME_GROUP = "group";
+	static final String DEFAULT_COLUMN_NAME_GROUP = "group_not_configured_but_model_default";
 	final SettingsModelColumnName m_inputColumnNameGroup =
 			new SettingsModelColumnName(CFGKEY_COLUM_NAME_GROUP, DEFAULT_COLUMN_NAME_GROUP);
 
 	// Input Qty Column Selection
 	static final String CFGKEY_COLUMN_NAME_QTY = "QtyCol";
-	static final String DEFAULT_COLUMN_NAME_QTY = "quantity";
+	static final String DEFAULT_COLUMN_NAME_QTY = "quantity_not_configured_but_model_default";
 	final SettingsModelColumnName m_inputColumnNameQty =
 			new SettingsModelColumnName(CFGKEY_COLUMN_NAME_QTY, DEFAULT_COLUMN_NAME_QTY);
 
@@ -119,7 +118,7 @@ public class FifoResolverNodeModel extends NodeModel {
 		String nameOfFirstNumericColumn = null;
 		for (int i = 0; i < inSpecs[IN_PORT].getNumColumns(); i++) {
 			DataColumnSpec columnSpec = inSpecs[IN_PORT].getColumnSpec(i);
-			if (nameOfFirstStringColumn == null && columnSpec.getType().isCompatible(StringValue.class))
+			if (nameOfFirstStringColumn == null && columnSpec.getType().getCellClass().equals(StringCell.class))
 				nameOfFirstStringColumn = columnSpec.getName();
 			else if (nameOfFirstNumericColumn == null && columnSpec.getType().isCompatible(DoubleValue.class))
 				nameOfFirstNumericColumn = columnSpec.getName();
@@ -127,7 +126,7 @@ public class FifoResolverNodeModel extends NodeModel {
 
 		if (nameOfFirstStringColumn == null || nameOfFirstNumericColumn == null)
 			throw new InvalidSettingsException("Input table must contain at least a String and numeric column each.");
-
+		
 		if (m_inputColumnNameGroup.getStringValue().equals(DEFAULT_COLUMN_NAME_GROUP))
 			m_inputColumnNameGroup.setStringValue(nameOfFirstStringColumn);
 		if (m_inputColumnNameQty.getStringValue().equals(DEFAULT_COLUMN_NAME_QTY))

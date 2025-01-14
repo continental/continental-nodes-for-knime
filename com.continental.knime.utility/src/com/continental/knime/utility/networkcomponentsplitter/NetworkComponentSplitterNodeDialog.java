@@ -18,7 +18,8 @@
 
 package com.continental.knime.utility.networkcomponentsplitter;
 
-import org.knime.core.data.StringValue;
+import org.knime.core.data.DataColumnSpec;
+import org.knime.core.data.def.StringCell;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.defaultnodesettings.DefaultNodeSettingsPane;
@@ -28,6 +29,7 @@ import org.knime.core.node.defaultnodesettings.DialogComponentString;
 import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
 import org.knime.core.node.defaultnodesettings.SettingsModelColumnName;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
+import org.knime.core.node.util.ColumnFilter;
 
 public class NetworkComponentSplitterNodeDialog extends DefaultNodeSettingsPane {
 
@@ -36,18 +38,28 @@ public class NetworkComponentSplitterNodeDialog extends DefaultNodeSettingsPane 
 	SettingsModelString outputColumnNameNode;
 	SettingsModelString outputColumnNameCluster;
 	
-	@SuppressWarnings("unchecked")
 	protected NetworkComponentSplitterNodeDialog() {
 		super();
+		
+		ColumnFilter pureStringColumnFilter = new ColumnFilter() {
+            @Override
+            public boolean includeColumn(DataColumnSpec columnSpec) {
+                return columnSpec.getType().getCellClass().equals(StringCell.class);
+            }
+            @Override
+            public String allFilteredMsg() {
+                return "No String columns available.";
+            }
+        };
 
 		//create Node Selection Pane
 		this.createNewGroup("Node Selection");
 		inputColumn1 = new SettingsModelColumnName(NetworkComponentSplitterNodeModel.CFGKEY_COLUM_NAME1, NetworkComponentSplitterNodeModel.DEFAULT_COLUMN_NAME1);
 		this.addDialogComponent(new DialogComponentColumnNameSelection( // Select Node1
-				inputColumn1, "Select Node1 Column", 0, true, StringValue.class));
+				inputColumn1, "Select Node1 Column", 0, true, pureStringColumnFilter));
 		inputColumn2 = new SettingsModelColumnName(NetworkComponentSplitterNodeModel.CFGKEY_COLUMN_NAME2,NetworkComponentSplitterNodeModel.DEFAULT_COLUMN_NAME2);
 		this.addDialogComponent(new DialogComponentColumnNameSelection( // Select Node2
-				inputColumn2, "Select Node2 Column", 0, true, StringValue.class));
+				inputColumn2, "Select Node2 Column", 0, true, pureStringColumnFilter));
 
 		// create Missing Value Handling Pane
 		this.createNewGroup("Missing Value Handling");
