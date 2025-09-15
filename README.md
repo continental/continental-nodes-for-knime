@@ -1,5 +1,8 @@
-Continental Nodes for KNIME Extension
-=====================================
+(ARCHIVED) Continental Nodes for KNIME Extension
+================================================
+
+Important information in September 2025: With the spin-off of Continental's Automotive sector as AUMOVIO, the developer team behind this extension is not associated with the Continental brand anymore. Hence, we archive this Github project. The popular extension will continue under the maintenance of the KNIME team itself.
+
 
 Many Continental employees are frequent users of the KNIME Analytics Platform for use cases ranging from data workflow automation to advanced analytics. To improve their data processing and reporting capabilities, we have developed the Continental Nodes for KNIME Extension.
 
